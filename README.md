@@ -16,7 +16,7 @@ A cashier's point of sale for the stores of the [ERP](https://erp-otw7.vercel.ap
 ## How it fits together
 
 ```
- Browser ──► Next.js (web) ──/api/*──► FastAPI (backend) ──REST──► ERP /api/integration/v1
+ Browser ──► Next.js (frontend) ──/api/*──► FastAPI (backend) ──REST──► ERP /api/integration/v1
                                           │
                                        Postgres (POS's own database)
 ```
@@ -48,8 +48,8 @@ cp .env.example .env            # fill in POS_ERP_CLIENT_ID and POS_ERP_CLIENT_S
 ../.venv/Scripts/python -m pos.cli sync           # first pull from the ERP
 ../.venv/Scripts/python -m uvicorn app:app --port 8001
 
-# web (port 3001), in another terminal
-cd web
+# frontend (port 3001), in another terminal
+cd frontend
 npm install
 npm run dev
 ```
@@ -65,7 +65,7 @@ Two Vercel projects from this repo, like the ERP:
 | Project | Root directory | Environment variables |
 |---|---|---|
 | POS API | `backend` | `POS_DATABASE_URL` (Neon), `POS_SERVERLESS=true`, `POS_COOKIE_SECURE=true`, `POS_ERP_URL=https://erp-otw7.vercel.app`, `POS_ERP_CLIENT_ID`, `POS_ERP_CLIENT_SECRET`, `POS_CRON_SECRET` and `CRON_SECRET` (same value) |
-| POS web | `web` | `API_URL` = the POS API's URL |
+| POS frontend | `frontend` | `API_URL` = the POS API's URL |
 
 Before first use, run `python -m pos.cli migrate` against the Neon database. The first cashier login pulls everything from the ERP.
 

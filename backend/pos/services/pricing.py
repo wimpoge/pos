@@ -1,5 +1,5 @@
 """How a cart is priced: the customer's group discount, the cashier's own discount, and the
-ERP's promotions. The till's screen does the same sums (web/src/lib/pricing.ts); this is the
+ERP's promotions. The till's screen does the same sums (frontend/src/lib/pricing.ts); this is the
 one that counts.
 
 Promotions never stack. Each line gets the single best price among:

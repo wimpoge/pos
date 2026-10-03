@@ -1,5 +1,5 @@
 {
-  "name": "pos-web",
+  "name": "pos-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {

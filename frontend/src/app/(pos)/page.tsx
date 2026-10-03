@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Moon, Store as StoreIcon } from "lucide-react";
-import Link from "next/link";
+import { Moon, Printer, Store as StoreIcon, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { FormEvent, useState } from "react";
+import { PageHeader } from "@/components/pos/common";
+import { DayReportView } from "@/components/pos/day-report";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -16,7 +18,8 @@ import { EndShiftDialog } from "@/components/pos/end-shift-dialog";
 import { Till } from "@/components/pos/till";
 import { get, post } from "@/lib/api";
 import { useMe } from "@/lib/auth";
-import type { Shift, Store, SyncRun } from "@/lib/types";
+import { todayIso } from "@/lib/format";
+import type { DayReport, Shift, Store, SyncRun } from "@/lib/types";
 
 export default function TillPage() {
   const me = useMe();
@@ -24,32 +27,55 @@ export default function TillPage() {
   return <Till key={me.shift.id} storeId={me.shift.store.id} />;
 }
 
-/** After closing time: no selling until tomorrow. The cashier may still have a drawer to count. */
+/** After closing time: no selling until tomorrow, so the till shows how the day went instead:
+ * the day report of the store the cashier last worked in. The drawer may still need counting. */
 function ClosedForToday() {
   const me = useMe();
   const recent = useQuery({ queryKey: ["shift", "list"], queryFn: () => get<Shift[]>("/api/shifts", { limit: 5 }) });
   const uncounted = recent.data?.find((s) => s.needs_count);
+  const storeId = recent.data?.[0]?.store.id ?? null;
+  const on = todayIso();
+  const report = useQuery({
+    queryKey: ["day-report", storeId, on],
+    queryFn: () => get<DayReport>("/api/reports/day", { store_id: storeId, on }),
+    enabled: storeId !== null,
+  });
   const [counting, setCounting] = useState(false);
+
   return (
-    <Empty className="flex-1">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <Moon />
-        </EmptyMedia>
-        <EmptyTitle>The till is closed for today</EmptyTitle>
-        <EmptyDescription>
-          Shifts end at {me.shift_end_time}. You can open a new one tomorrow.
-          {uncounted && ` Your shift ${uncounted.number} ended by itself; count the drawer before you go.`}
-        </EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent className="flex-row justify-center">
-        {uncounted && <Button onClick={() => setCounting(true)}>Count the drawer</Button>}
-        <Button variant="outline" render={<Link href="/sales" />} nativeButton={false}>
-          Today&apos;s sales
-        </Button>
-      </EmptyContent>
+    <div className="flex flex-col gap-6 p-4 md:p-6 print:gap-3 print:p-0">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Moon className="size-5" /> Closed for today
+          </span>
+        }
+        description={`Shifts end at ${me.shift_end_time}; you can open a new one tomorrow. Here is how ${
+          report.data ? report.data.store.name : "the store"
+        } did today.`}
+        actions={
+          <>
+            {uncounted && <Button onClick={() => setCounting(true)}>Count the drawer</Button>}
+            <Button variant="outline" onClick={() => window.print()} disabled={!report.data}>
+              <Printer /> Print
+            </Button>
+          </>
+        }
+      />
+      {uncounted && (
+        <Alert className="print:hidden">
+          <TriangleAlert />
+          <AlertTitle>Count the drawer for {uncounted.number}</AlertTitle>
+          <AlertDescription>It ended by itself at closing time, before the cash was counted.</AlertDescription>
+        </Alert>
+      )}
+      {storeId === null && !recent.isPending ? (
+        <p className="text-sm text-muted-foreground">You had no shift today.</p>
+      ) : (
+        <DayReportView report={report.data} />
+      )}
       <EndShiftDialog shiftId={uncounted?.id ?? null} open={counting} onOpenChange={setCounting} />
-    </Empty>
+    </div>
   );
 }
 

@@ -56,12 +56,14 @@ export const NAV: NavItem[] = [
   { title: "Returns", href: "/returns", icon: RotateCcw },
   { title: "Day report", href: "/report", icon: ChartColumn },
   { title: "Shift", href: "/shift", icon: Clock },
-  { title: "Profile", href: "/profile", icon: UserRound },
 ];
+
+/** Down by the cashier's name, apart from the work pages. */
+const PROFILE: NavItem = { title: "Profile", href: "/profile", icon: UserRound };
 
 /** The nav item for a path: "/" only matches the till itself, "/sales/12" matches Sales. */
 export function findNav(pathname: string): NavItem | undefined {
-  return NAV.find((i) => (i.href === "/" ? pathname === "/" : pathname.startsWith(i.href)));
+  return [...NAV, PROFILE].find((i) => (i.href === "/" ? pathname === "/" : pathname.startsWith(i.href)));
 }
 
 export function AppSidebar() {
@@ -102,6 +104,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton isActive={active === PROFILE.href} tooltip={PROFILE.title} render={<Link href={PROFILE.href} />}>
+              <PROFILE.icon />
+              <span>{PROFILE.title}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <UserMenu />
       </SidebarFooter>
       <SidebarRail />
@@ -158,15 +168,14 @@ function UserMenu() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/profile" />}>
-              <UserRound /> Profile
-            </DropdownMenuItem>
             {me.shift && (
-              <DropdownMenuItem onClick={() => setEnding(true)}>
-                <Lock /> End shift
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => setEnding(true)}>
+                  <Lock /> End shift
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
             )}
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuLabel>Theme</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={(v) => setTheme(String(v))}>
