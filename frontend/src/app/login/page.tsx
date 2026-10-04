@@ -44,13 +44,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-muted p-4 md:p-10">
-      {/* soft colour behind the card */}
-      <div aria-hidden className="pointer-events-none absolute -top-40 -left-40 size-128 rounded-full bg-violet-500/20 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -right-40 -bottom-40 size-128 rounded-full bg-indigo-500/20 blur-3xl" />
-
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border bg-card shadow-2xl md:grid-cols-2">
-        <div className="flex flex-col justify-center gap-8 p-8 sm:p-12">
+    // The whole window: the form on the left half, the illustration filling the right half.
+    <div className="grid min-h-svh bg-background md:grid-cols-2">
+      <div className="flex items-center justify-center p-8 sm:p-12">
+        <div className="flex w-full max-w-md flex-col gap-8">
           <div className="flex items-center gap-2 font-semibold">
             <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-white">
               <ShoppingCart className="size-5" />
@@ -121,7 +118,7 @@ export default function LoginPage() {
               >
                 {busy === username && <Spinner />} Log in {busy !== username && <ArrowRight />}
               </Button>
-              <FieldSeparator className="[&_[data-slot=field-separator-content]]:bg-card">Or try the demo</FieldSeparator>
+              <FieldSeparator>Or try the demo</FieldSeparator>
               <Button
                 type="button"
                 variant="outline"
@@ -143,15 +140,15 @@ export default function LoginPage() {
             </FieldGroup>
           </form>
         </div>
+      </div>
 
-        <div className="relative hidden min-h-144 md:block">
-          <LoginArt variant="pos" />
-          <div className="absolute inset-x-0 top-0 p-10 text-white">
-            <p className="text-sm font-medium tracking-wide text-white/80 uppercase">Point of sale</p>
-            <p className="mt-2 max-w-xs text-2xl leading-snug font-semibold">
-              Sell fast. Keep selling when the network doesn&apos;t.
-            </p>
-          </div>
+      <div className="relative hidden overflow-hidden md:block">
+        <LoginArt variant="pos" />
+        <div className="absolute inset-x-0 top-0 p-12 text-white lg:p-16">
+          <p className="text-sm font-medium tracking-wide text-white/80 uppercase">Point of sale</p>
+          <p className="mt-2 max-w-sm text-3xl leading-snug font-semibold">
+            Sell fast. Keep selling when the network doesn&apos;t.
+          </p>
         </div>
       </div>
     </div>
