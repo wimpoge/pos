@@ -40,6 +40,17 @@ export type Me = {
   loyalty: { earn_per: number; point_value: number };
   walk_in_customer_id: number | null;
   erp_ready: boolean;
+  /** How this cashier likes the till; saved on their account, so it follows them. */
+  preferences: Preferences;
+  /** Can unlock a locked till with a PIN (otherwise with their password). */
+  has_pin: boolean;
+};
+
+export type Preferences = {
+  auto_print: boolean;
+  scan_sound: boolean;
+  default_payment: "cash" | "card" | "qris";
+  auto_lock_minutes: number;
 };
 
 const AuthContext = createContext<Me | null>(null);
@@ -51,6 +62,8 @@ export function useMe(): Me {
 }
 
 const ME_KEY = "pos-me";
+
+const DEFAULT_PREFERENCES: Preferences = { auto_print: false, scan_sound: true, default_payment: "cash", auto_lock_minutes: 0 };
 
 /** Who is logged in. When the POS server can't be reached the till keeps the last answer, so it
  * can go on selling offline; only a real "not logged in" sends the cashier to the login page. */
@@ -65,7 +78,11 @@ async function loadMe(): Promise<Me> {
     if (e instanceof ApiError && isUnreachable(e)) {
       try {
         const cached = localStorage.getItem(ME_KEY);
-        if (cached) return JSON.parse(cached) as Me;
+        if (cached) {
+          const me = JSON.parse(cached) as Me;
+          // Saved by an older till: fill in what it didn't know about yet.
+          return { ...me, has_pin: me.has_pin ?? false, preferences: { ...DEFAULT_PREFERENCES, ...me.preferences } };
+        }
       } catch {}
     }
     throw e;

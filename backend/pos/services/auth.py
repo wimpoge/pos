@@ -96,9 +96,15 @@ def _offline_login(db: Session, username: str, password: str) -> User:
     return user
 
 
-def start_session(db: Session, user: User, hours: int) -> str:
+# How often a session's "last seen" is written: every request would be a write for nothing.
+SEEN_EVERY = timedelta(minutes=5)
+
+
+def start_session(db: Session, user: User, hours: int, user_agent: str | None = None) -> str:
     token = secrets.token_urlsafe(32)
-    db.add(AuthSession(token_hash=sha256(token), user_id=user.id, expires_at=utcnow() + timedelta(hours=hours)))
+    now = utcnow()
+    db.add(AuthSession(token_hash=sha256(token), user_id=user.id, expires_at=now + timedelta(hours=hours),
+                       last_seen_at=now, user_agent=(user_agent or "")[:200] or None))
     return token
 
 
@@ -106,6 +112,10 @@ def user_for_token(db: Session, token: str) -> User | None:
     session = db.get(AuthSession, sha256(token))
     if session is None or session.expires_at < utcnow() or not session.user.active:
         return None
+    now = utcnow()
+    if session.last_seen_at is None or session.last_seen_at < now - SEEN_EVERY:
+        session.last_seen_at = now
+        db.commit()
     return session.user
 
 

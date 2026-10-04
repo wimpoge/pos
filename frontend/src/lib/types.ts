@@ -242,3 +242,39 @@ export type DayReport = {
   promotions: { name: string; lines: number; discount: number }[];
   erp: { waiting: number; refused: number };
 };
+
+export type DeviceSession = {
+  id: string;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string;
+  user_agent: string | null;
+  current: boolean;
+};
+
+export type Profile = {
+  account: {
+    username: string;
+    full_name: string;
+    email: string | null;
+    role: string;
+    active?: boolean;
+    created_at: string | null;
+    last_login_at: string | null;
+  };
+  erp_reachable: boolean;
+  first_login_here: string;
+  preferences: import("./auth").Preferences;
+  has_pin: boolean;
+  sessions: DeviceSession[];
+};
+
+type Window = { sales: number; total: number; refunds: number; net: number; items: number; average: number; days_worked: number };
+export type CashierStats = {
+  days: { date: string; sales: number; total: number; refunds: number; items: number }[];
+  week: Window;
+  month: Window;
+  best_day: ({ date: string } & Omit<Window, "net" | "average" | "days_worked">) | null;
+  top_products: { name: string; qty: number; total: number }[];
+  drawer: { counted_shifts: number; exact: number; variance: number };
+};

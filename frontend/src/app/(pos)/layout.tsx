@@ -8,6 +8,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppSidebar, findNav } from "@/components/pos/app-sidebar";
 import { ApprovalProvider } from "@/components/pos/approval";
+import { LockProvider } from "@/components/pos/lock";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -32,13 +33,15 @@ export default function PosLayout({ children }: { children: ReactNode }) {
       }
     >
       <ApprovalProvider>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset className="h-svh min-w-0 overflow-hidden print:h-auto print:overflow-visible">
-            <Header />
-            <main className="flex min-h-0 flex-1 flex-col overflow-y-auto print:overflow-visible">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
+        <LockProvider>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="h-svh min-w-0 overflow-hidden print:h-auto print:overflow-visible">
+              <Header />
+              <main className="flex min-h-0 flex-1 flex-col overflow-y-auto print:overflow-visible">{children}</main>
+            </SidebarInset>
+          </SidebarProvider>
+        </LockProvider>
       </ApprovalProvider>
     </AuthProvider>
   );

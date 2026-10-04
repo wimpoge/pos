@@ -53,6 +53,7 @@ export function PaymentDialog({
   busy,
   onPay,
   wallet,
+  defaultMethod = "cash",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,6 +62,8 @@ export function PaymentDialog({
   onPay: (rows: PaymentRow[]) => void;
   /** The customer's points, when they have any to spend (and the server can be reached). */
   wallet?: PointsWallet | null;
+  /** The cashier's preferred method; card and QRIS start with the exact total. */
+  defaultMethod?: "cash" | "card" | "qris";
 }) {
   const [rows, setRows] = useState<PaymentRow[]>([{ method: "cash", amount: 0, reference: "" }]);
   const [split, setSplit] = useState(false);
@@ -73,7 +76,7 @@ export function PaymentDialog({
   const [openedFor, setOpenedFor] = useState<number | null>(null);
   if (open && openedFor !== total) {
     setOpenedFor(total);
-    setRows([{ method: "cash", amount: 0, reference: "" }]);
+    setRows([{ method: defaultMethod, amount: defaultMethod === "cash" ? 0 : total, reference: "" }]);
     setSplit(false);
   }
   if (!open && openedFor !== null) setOpenedFor(null);

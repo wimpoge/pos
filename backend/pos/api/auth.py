@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from ..models import User
 from ..services import auth as auth_service
 from ..services.common import all_settings
+from ..services.profile import preferences_of
 from ..services.shifts import ShiftClock, current_shift
 from ..services.sync import erp_can_take_sales, refresh
 from .deps import SESSION_COOKIE, CurrentUser, Db, Erp
@@ -37,6 +38,8 @@ def me_out(user: User, db, settings) -> dict:
         "email_receipts": bool(settings.smtp_host),
         "loyalty": {"earn_per": s["erp.loyalty_earn_per"], "point_value": s["erp.loyalty_point_value"]},
         "walk_in_customer_id": s["walk_in_customer_id"],
+        "preferences": preferences_of(user),
+        "has_pin": bool(user.pin_hash),
         "erp_ready": erp_can_take_sales(db),
     }
 
@@ -53,7 +56,7 @@ def login(body: LoginIn, request: Request, response: Response, background: Backg
     settings = request.app.state.settings
     user = auth_service.authenticate(db, erp, body.username, body.password)
     db.flush()
-    token = auth_service.start_session(db, user, settings.session_hours)
+    token = auth_service.start_session(db, user, settings.session_hours, request.headers.get("user-agent"))
     db.commit()
     response.set_cookie(SESSION_COOKIE, token, max_age=settings.session_hours * 3600, httponly=True,
                         samesite="lax", secure=settings.cookie_secure, path="/")

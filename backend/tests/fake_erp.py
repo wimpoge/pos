@@ -81,6 +81,22 @@ class FakeErp:
 
         if request.method == "POST" and path == "/cashiers/login":
             return self._cashier_login(json.loads(request.content))
+        if request.method == "POST" and path == "/cashiers/password":
+            body = json.loads(request.content)
+            user = self.users.get(body["username"])
+            if user is None or body["current_password"] != user[0]:
+                return httpx.Response(401, json={"detail": "Wrong username or password."})
+            if body["new_password"] == user[0]:
+                return httpx.Response(422, json={"detail": "Pick a password different from the current one."})
+            user[0] = body["new_password"]
+            return httpx.Response(200, json={"username": body["username"], "full_name": user[1]})
+        if request.method == "GET" and (m := re.fullmatch(r"/cashiers/([^/]+)", path)):
+            user = self.users.get(m[1])
+            if user is None or user[2] != "cashier":
+                return httpx.Response(404, json={"detail": "cashier not found"})
+            return httpx.Response(200, json={"username": m[1], "full_name": user[1], "email": f"{m[1]}@kios.test",
+                                             "role": "Cashier", "active": True, "created_at": "2026-01-02T03:04:05",
+                                             "last_login_at": None})
         if request.method == "POST" and path == "/supervisors/verify":
             return self._verify_supervisor(json.loads(request.content))
         if request.method == "GET" and path == "/settings":

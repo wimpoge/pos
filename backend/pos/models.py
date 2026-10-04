@@ -50,6 +50,9 @@ class User(Base):
     locked_until: Mapped[datetime | None]
     last_login_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # The cashier's own: a short PIN that unlocks a locked till, and how they like the till to work.
+    pin_hash: Mapped[str | None] = mapped_column(String(200))
+    preferences: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
 
 
 class AuthSession(Base):
@@ -61,6 +64,8 @@ class AuthSession(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), index=True)
     expires_at: Mapped[datetime]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    last_seen_at: Mapped[datetime | None]
+    user_agent: Mapped[str | None] = mapped_column(String(200))  # which browser, for "your devices"
 
     user: Mapped[User] = relationship()
 

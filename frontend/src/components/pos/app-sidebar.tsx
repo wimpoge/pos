@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   ChartColumn,
   Clock,
+  KeyRound,
   Lock,
   RotateCcw,
   LogOut,
@@ -21,6 +22,7 @@ import { useTheme } from "next-themes";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { EndShiftDialog } from "@/components/pos/end-shift-dialog";
+import { useLock } from "@/components/pos/lock";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -125,6 +127,7 @@ function UserMenu() {
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
   const [ending, setEnding] = useState(false);
+  const lock = useLock();
   const initials = me.full_name
     .split(" ")
     .map((p) => p[0])
@@ -168,6 +171,9 @@ function UserMenu() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={lock}>
+              <KeyRound /> Lock till
+            </DropdownMenuItem>
             {me.shift && (
               <>
                 <DropdownMenuItem onClick={() => setEnding(true)}>

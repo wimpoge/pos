@@ -25,7 +25,7 @@ import { CustomerPicker } from "@/components/pos/customer-picker";
 import { HeldCartsSheet, useHeldCarts } from "@/components/pos/held-carts";
 import { LowStockSheet } from "@/components/pos/low-stock";
 import { PaymentDialog, type PaymentRow } from "@/components/pos/payment-dialog";
-import { ReceiptDialog } from "@/components/pos/receipt-dialog";
+import { printReceipt, ReceiptDialog } from "@/components/pos/receipt-dialog";
 import { ShortcutsDialog } from "@/components/pos/shortcuts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -135,6 +135,21 @@ function offlineReceipt(
   };
 }
 
+/** A short beep for a scan, when the cashier wants one. */
+let audio: AudioContext | null = null;
+function beep() {
+  try {
+    audio ??= new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.frequency.value = 1200;
+    gain.gain.value = 0.08;
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + 0.06);
+  } catch {}
+}
+
 export function Till({ storeId }: { storeId: number }) {
   const me = useMe();
   const router = useRouter();
@@ -225,6 +240,7 @@ export function Till({ storeId }: { storeId: number }) {
       toast.warning(`Only ${fmtQty(p.available)} ${p.unit} of ${p.name} in stock here.`);
       return;
     }
+    if (me.preferences.scan_sound) beep();
     setCart((c) => {
       const existing = c.lines.find((l) => l.productId === p.id);
       // The item just scanned goes to the bottom: + and − work on the last one.
@@ -330,6 +346,7 @@ export function Till({ storeId }: { storeId: number }) {
   function finish(sale: Sale, offline: boolean) {
     setPaying(false);
     setReceipt({ sale, offline });
+    if (!offline && me.preferences.auto_print) printReceipt(sale.id);
     clearCart();
     publishDisplay({ kind: "paid", company: me.company.name, store: storeName, total: sale.total, change: sale.change_due, points: sale.points_earned });
     for (const key of [["catalog", storeId], ["sales-summary"], ["sales"], ["shift"]]) queryClient.invalidateQueries({ queryKey: key });
@@ -792,6 +809,7 @@ export function Till({ storeId }: { storeId: number }) {
         total={totals.total}
         busy={checkout.isPending}
         wallet={wallet}
+        defaultMethod={me.preferences.default_payment}
         onPay={(rows) => checkout.mutate(rows)}
       />
       <HeldCartsSheet open={holding} onOpenChange={setHolding} onResume={resume} cartBusy={cart.lines.length > 0} />
