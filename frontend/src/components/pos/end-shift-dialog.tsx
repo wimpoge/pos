@@ -90,7 +90,7 @@ function CountForm({ shift, onEnded }: { shift: ShiftDetail; onEnded: (s: ShiftD
         </DialogDescription>
       </DialogHeader>
       {!countingLater && (
-        <Totals
+        <Totals full
           rows={[
             { label: "Sales", value: `${shift.summary.sales_count} · ${money(shift.summary.sales_total)}` },
             { label: "Opening float", value: money(shift.opening_float) },
@@ -161,7 +161,7 @@ function Ended({ shift, onDone }: { shift: ShiftDetail; onDone: () => void }) {
             : `The drawer was ${money(Math.abs(shift.variance ?? 0))} ${(shift.variance ?? 0) > 0 ? "over" : "short"}.`}
         </DialogDescription>
       </DialogHeader>
-      <Totals
+      <Totals full
         rows={[
           { label: "Sales", value: `${shift.summary.sales_count} · ${money(shift.summary.sales_total)}` },
           { label: "Card + QRIS", value: money(shift.summary.by_method.card + shift.summary.by_method.qris) },
