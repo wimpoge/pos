@@ -182,3 +182,17 @@
     padding: 0 !important;
   }
 }
+
+/* Paper is white whatever the screen theme. A page that has a paper version (.print-root, put
+   straight into <body>) prints that alone. */
+@media print {
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+    color-scheme: light !important;
+  }
+  body:has(> .print-root) > :not(.print-root) {
+    display: none !important;
+  }
+}
