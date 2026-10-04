@@ -25,6 +25,7 @@ import { CustomerPicker } from "@/components/pos/customer-picker";
 import { HeldCartsSheet, useHeldCarts } from "@/components/pos/held-carts";
 import { LowStockSheet } from "@/components/pos/low-stock";
 import { PaymentDialog, type PaymentRow } from "@/components/pos/payment-dialog";
+import { ProductImage } from "@/components/pos/product-image";
 import { printReceipt, ReceiptDialog } from "@/components/pos/receipt-dialog";
 import { ShortcutsDialog } from "@/components/pos/shortcuts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -477,7 +478,8 @@ export function Till({ storeId }: { storeId: number }) {
               return (
                 <li key={cl.productId} className="rounded-lg bg-background p-2 ring-1 ring-foreground/5">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <ProductImage category={byId.get(cl.productId)?.category ?? cl.category} size="sm" />
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{cl.name}</div>
                       <div className="text-xs text-muted-foreground tabular-nums">
                         {paid && paid.unitPrice < cl.price ? (
@@ -739,6 +741,7 @@ export function Till({ storeId }: { storeId: number }) {
                     onClick={() => add(p)}
                     className="flex min-h-28 flex-col justify-between gap-2 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/50 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
                   >
+                    <ProductImage category={p.category} size="lg" />
                     <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
                     {promo && (
                       <span className="flex min-w-0 items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">

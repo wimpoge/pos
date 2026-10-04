@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackageCheck, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ProductImage } from "@/components/pos/product-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ export function LowStockSheet({
             <ul className="flex flex-col divide-y rounded-lg border">
               {low.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 px-3 py-2">
+                  <ProductImage category={p.category} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{p.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{p.sku}</div>
