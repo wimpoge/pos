@@ -44,13 +44,14 @@ export function DayReportView({ report: r }: { report: DayReport | undefined }) 
           </CardHeader>
           <CardContent>
             <Totals
+              full
               rows={[
                 { label: "Sales before discount", value: money(r.sales.gross) },
-                { label: "Discounts", value: `−${money(r.sales.discount)}` },
+                { label: "Discounts", value: r.sales.discount ? `−${money(r.sales.discount)}` : "—" },
                 { label: "Sales before tax", value: money(r.sales.subtotal) },
                 { label: "PPN", value: money(r.sales.tax) },
                 { label: "Sales", value: money(r.sales.total) },
-                { label: "Refunds", value: `−${money(r.returns.total)}` },
+                { label: "Refunds", value: r.returns.total ? `−${money(r.returns.total)}` : "—" },
                 { label: "Net takings", value: money(r.net.total), strong: true },
               ]}
             />

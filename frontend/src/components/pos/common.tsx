@@ -214,9 +214,10 @@ export function Details({ items }: { items: { label: string; value: ReactNode }[
   );
 }
 
-export function Totals({ rows }: { rows: { label: string; value: ReactNode; strong?: boolean }[] }) {
+/** Label/amount rows ending in a total: narrow and right-aligned under a document, or `full` to fill a card. */
+export function Totals({ rows, full = false }: { rows: { label: string; value: ReactNode; strong?: boolean }[]; full?: boolean }) {
   return (
-    <dl className="ml-auto w-full max-w-xs space-y-1.5 text-sm">
+    <dl className={cn("w-full space-y-1.5 text-sm", !full && "ml-auto max-w-xs")}>
       {rows.map((r) => (
         <div key={r.label} className={cn("flex justify-between gap-4", r.strong ? "border-t pt-2 text-base font-semibold" : "text-muted-foreground")}>
           <dt>{r.label}</dt>

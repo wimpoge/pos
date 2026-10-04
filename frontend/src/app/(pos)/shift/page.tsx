@@ -82,6 +82,7 @@ export default function ShiftPage() {
               </CardHeader>
               <CardContent>
                 <Totals
+                  full
                   rows={[
                     { label: "Opening float", value: money(shift.opening_float) },
                     { label: "Cash sales, less refunds", value: money(shift.summary.by_method.cash) },
