@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Moon, Printer, Store as StoreIcon, TriangleAlert } from "lucide-react";
+import { Moon, Store as StoreIcon, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { FormEvent, useState } from "react";
 import { PageHeader } from "@/components/pos/common";
-import { DayReportView } from "@/components/pos/day-report";
+import { DayReportView, PrintDayReport } from "@/components/pos/day-report";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,9 +56,7 @@ function ClosedForToday() {
         actions={
           <>
             {uncounted && <Button onClick={() => setCounting(true)}>Count the drawer</Button>}
-            <Button variant="outline" onClick={() => window.print()} disabled={!report.data}>
-              <Printer /> Print
-            </Button>
+            <PrintDayReport report={report.data} />
           </>
         }
       />

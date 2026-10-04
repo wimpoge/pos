@@ -1,11 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Printer } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/pos/common";
-import { DayReportView } from "@/components/pos/day-report";
-import { Button } from "@/components/ui/button";
+import { DayReportView, PrintDayReport } from "@/components/pos/day-report";
 import { Input } from "@/components/ui/input";
 import { get } from "@/lib/api";
 import { useMe } from "@/lib/auth";
@@ -46,9 +44,7 @@ export default function DayReportPage() {
               ))}
             </select>
             <Input type="date" aria-label="Day" className="h-9 w-40" value={on} max={todayIso()} onChange={(e) => setOn(e.target.value || todayIso())} />
-            <Button variant="outline" onClick={() => window.print()} disabled={!r}>
-              <Printer /> Print
-            </Button>
+            <PrintDayReport report={r} />
           </>
         }
       />

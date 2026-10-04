@@ -1,9 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { FileText, Printer, ReceiptText } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
 import { StatCard, StatusBadge, Totals } from "@/components/pos/common";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMe } from "@/lib/auth";
@@ -11,17 +14,10 @@ import { dateLabel, money, qty, timeLabel } from "@/lib/format";
 import { METHOD_LABEL, type DayReport } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** The end-of-day (Z) report: cards on screen, a plain ruled document on paper. Used on the Day
- * report page and on the till once it closes. */
+/** The end-of-day (Z) report on screen. Used on the Day report page and on the till once it
+ * closes; next to it goes <PrintDayReport>, which prints it as a document. */
 export function DayReportView({ report }: { report: DayReport | undefined }) {
-  return (
-    <>
-      <div className="contents print:hidden">
-        <ScreenReport report={report} />
-      </div>
-      {report && <PaperPortal><PrintReport report={report} /></PaperPortal>}
-    </>
-  );
+  return <ScreenReport report={report} />;
 }
 
 function ScreenReport({ report: r }: { report: DayReport | undefined }) {
@@ -222,147 +218,336 @@ function ScreenReport({ report: r }: { report: DayReport | undefined }) {
 
 // ---------------------------------------------------------------- on paper
 
+export type Paper = "a4" | "receipt";
+type Section = "shifts" | "cashiers" | "products" | "promotions" | "signatures";
+const SECTIONS: [Section, string][] = [
+  ["shifts", "Shifts and drawer counts"],
+  ["cashiers", "By cashier"],
+  ["products", "Top products"],
+  ["promotions", "Promotions used"],
+  ["signatures", "Lines to sign"],
+];
+type PaperOptions = { paper: Paper; sections: Record<Section, boolean> };
+const OPTIONS_KEY = "pos-day-report-print";
+const DEFAULT_OPTIONS: PaperOptions = {
+  paper: "a4",
+  sections: { shifts: true, cashiers: true, products: true, promotions: true, signatures: true },
+};
+
+function loadOptions(): PaperOptions {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OPTIONS_KEY) ?? "null") as PaperOptions | null;
+    if (saved) return { paper: saved.paper, sections: { ...DEFAULT_OPTIONS.sections, ...saved.sections } };
+  } catch {}
+  return DEFAULT_OPTIONS;
+}
+
+/** The Print button: opens a preview of exactly what will print, with the paper (A4 or the 80 mm
+ * receipt printer) and the sections to include, remembered on this till. The paper copy is also
+ * what Ctrl+P prints. */
+export function PrintDayReport({ report }: { report: DayReport | undefined }) {
+  const [open, setOpen] = useState(false);
+  const [options, setOptions] = useState<PaperOptions>(() => (typeof window === "undefined" ? DEFAULT_OPTIONS : loadOptions()));
+  const update = (next: PaperOptions) => {
+    setOptions(next);
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify(next));
+    } catch {}
+  };
+
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)} disabled={!report}>
+        <Printer /> Print
+      </Button>
+      {report && (
+        <PaperPortal>
+          <PaperReport report={report} options={options} printOnly />
+        </PaperPortal>
+      )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[92svh] gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <div className="grid max-h-[92svh] min-h-0 md:grid-cols-[17rem_1fr]">
+            <div className="flex flex-col gap-5 border-b p-5 md:border-r md:border-b-0">
+              <DialogHeader>
+                <DialogTitle>Print the day report</DialogTitle>
+                <DialogDescription>What you see on the right is what comes out of the printer.</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Paper</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      ["a4", "A4 page", FileText],
+                      ["receipt", "Receipt roll", ReceiptText],
+                    ] as const
+                  ).map(([value, label, Icon]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant={options.paper === value ? "default" : "outline"}
+                      className="h-16 flex-col gap-1"
+                      onClick={() => update({ ...options, paper: value })}
+                    >
+                      <Icon /> {label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {options.paper === "a4" ? "For the office printer and filing." : "80 mm, on the till's receipt printer."}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Include</span>
+                <p className="text-xs text-muted-foreground">Totals and payments always print.</p>
+                {SECTIONS.map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={options.sections[key]}
+                      onChange={(e) => update({ ...options, sections: { ...options.sections, [key]: e.target.checked } })}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-auto flex flex-col gap-2">
+                <Button onClick={() => window.print()} disabled={!report}>
+                  <Printer /> Print
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  In the printer window, pick the printer and keep the margins at Default. If the page&apos;s address
+                  or the date still shows at the edges, turn off &ldquo;Headers and footers&rdquo; under More settings.
+                </p>
+              </div>
+            </div>
+            <div className="min-h-0 overflow-auto bg-muted p-6">
+              {report && (
+                <div
+                  className="mx-auto w-fit shadow-lg ring-1 ring-black/10"
+                  style={{ zoom: options.paper === "a4" ? 0.72 : 1 }}
+                >
+                  <PaperReport report={report} options={options} />
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 /** Paper gets the report alone: it is rendered straight into <body>, outside the app's sidebar and
- * scrolling layout, and globals.css hides everything else when printing. Only ever rendered once
- * the report has loaded, so always in the browser. */
+ * scrolling layout, and globals.css hides everything else when printing. */
 function PaperPortal({ children }: { children: ReactNode }) {
   if (typeof document === "undefined") return null;
   return createPortal(<div className="print-root">{children}</div>, document.body);
 }
 
-/** The report as a document: black on white, ruled tables, every figure on A4 portrait, and room to
- * sign for the drawer. Only shown when printing. */
-function PrintReport({ report: r }: { report: DayReport }) {
+/** The report as a document: black on white and ruled. The page margin is the report's own
+ * padding (the @page margin is 0), so the browser has no room to print its URL, title and date. */
+function PaperReport({ report: r, options, printOnly = false }: { report: DayReport; options: PaperOptions; printOnly?: boolean }) {
   const me = useMe();
+  const receipt = options.paper === "receipt";
+  const on = options.sections;
   const variance = (v: number | null) => (v == null ? "—" : v === 0 ? "Exact" : `${v > 0 ? "+" : "−"}${money(Math.abs(v))}`);
-  const head = "border-b border-black py-1 text-left text-[9pt] font-semibold";
-  const cell = "border-b border-neutral-300 py-1";
-  return (
-    <article className="hidden bg-white font-sans text-[10.5pt] leading-snug text-black print:block">
-      <style>{"@page { size: A4 portrait; margin: 14mm 12mm; }"}</style>
-      <header className="mb-4 flex items-end justify-between border-b-2 border-black pb-2">
-        <div>
-          <p className="text-[9pt] uppercase tracking-wide">{me.company.name || "Store"} · Day report</p>
-          <h1 className="text-[16pt] font-bold">{r.store.name}</h1>
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const printed = new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
+  const totals = (
+    <PrintSection title="Totals">
+      <PaperTable
+        rows={[
+          ["Sales", `${r.sales.count}${r.sales.voided ? ` (${r.sales.voided} voided)` : ""} · ${qty(r.sales.items)} items`],
+          ["Before discount", money(r.sales.gross)],
+          ["Discounts", r.sales.discount ? `−${money(r.sales.discount)}` : "—"],
+          ["Before tax", money(r.sales.subtotal)],
+          ["PPN", money(r.sales.tax)],
+          ["Sales total", money(r.sales.total)],
+          [`Refunds (${plural(r.returns.count, "return")}, ${plural(r.returns.voids, "void")})`, r.returns.total ? `−${money(r.returns.total)}` : "—"],
+        ]}
+        total={["Net takings", money(r.net.total)]}
+      />
+    </PrintSection>
+  );
+  const notes = (
+    <div className="mt-2 text-[0.85em]">
+      <p>
+        Cash put in {money(r.cash.in)} · taken out {money(r.cash.out)}
+        {r.points.earned || r.points.redeemed ? ` · points earned ${qty(r.points.earned)}, spent ${qty(r.points.redeemed)}` : ""}
+      </p>
+      <p>
+        ERP: {r.erp.waiting + r.erp.refused === 0 ? "everything booked" : `${r.erp.waiting} waiting, ${r.erp.refused} refused`}
+        {r.sales.offline ? ` · ${r.sales.offline} sale(s) rung up offline` : ""}
+      </p>
+    </div>
+  );
+  const payments = (
+    <PrintSection title="By payment method">
+      {receipt ? (
+        <PaperTable
+          rows={r.by_method
+            .filter((m) => m.taken || m.refunded)
+            .map((m) => [`${METHOD_LABEL[m.method]}${m.refunded ? ` (−${money(m.refunded)} back)` : ""}`, money(m.net)])}
+          empty="Nothing taken."
+        />
+      ) : (
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <Th>Method</Th>
+              <Th right>Taken</Th>
+              <Th right>Refunded</Th>
+              <Th right>Net</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.by_method.map((m) => (
+              <tr key={m.method}>
+                <Td>{METHOD_LABEL[m.method]}</Td>
+                <Td right>{money(m.taken)}</Td>
+                <Td right>{m.refunded ? `−${money(m.refunded)}` : "—"}</Td>
+                <Td right bold>
+                  {money(m.net)}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {notes}
+    </PrintSection>
+  );
+  const shifts = on.shifts && (
+    <PrintSection title="Shifts">
+      {r.shifts.length === 0 ? (
+        <p>No shift opened that day.</p>
+      ) : receipt ? (
+        <PaperTable
+          rows={r.shifts.flatMap((s): [string, string][] => [
+            [`${s.cashier} · ${timeLabel(s.opened_at)}–${s.closed_at ? timeLabel(s.closed_at) : "open"}`, variance(s.variance)],
+            [`  counted ${money(s.counted_cash)} of ${money(s.expected_cash)}`, ""],
+          ])}
+        />
+      ) : (
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <Th>Shift</Th>
+              <Th>Cashier</Th>
+              <Th>Hours</Th>
+              <Th right>Float</Th>
+              <Th right>Expected</Th>
+              <Th right>Counted</Th>
+              <Th right>Over / short</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.shifts.map((s) => (
+              <tr key={s.id}>
+                <Td mono>{s.number}</Td>
+                <Td>{s.cashier}</Td>
+                <Td>
+                  {timeLabel(s.opened_at)}–{s.closed_at ? timeLabel(s.closed_at) : "still open"}
+                </Td>
+                <Td right>{money(s.opening_float)}</Td>
+                <Td right>{money(s.expected_cash)}</Td>
+                <Td right>{money(s.counted_cash)}</Td>
+                <Td right>{variance(s.variance)}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </PrintSection>
+  );
+  const cashiers = on.cashiers && (
+    <PrintSection title="By cashier">
+      <PaperTable
+        rows={r.by_cashier.map((c) => [
+          `${c.name} · ${c.sales} sale(s)`,
+          c.refunds ? `${money(c.total)} (−${money(c.refunds)})` : money(c.total),
+        ])}
+        empty="No sales."
+      />
+    </PrintSection>
+  );
+  const promotions = on.promotions && (
+    <PrintSection title="Promotions used">
+      <PaperTable rows={r.promotions.map((p) => [`${p.name} · ${p.lines} line(s)`, `−${money(p.discount)}`])} empty="None." />
+    </PrintSection>
+  );
+  const products = on.products && (
+    <PrintSection title="Top products">
+      <PaperTable rows={r.top_products.map((p) => [`${qty(p.qty)} × ${p.name}`, money(p.total)])} empty="No sales." />
+    </PrintSection>
+  );
+  const signatures = on.signatures && (
+    <footer className={cn("grid text-[0.85em]", receipt ? "mt-6 gap-6" : "mt-10 grid-cols-2 gap-10")} style={{ breakInside: "avoid" }}>
+      {["Drawer counted by", "Checked by (supervisor)"].map((label) => (
+        <div key={label}>
+          <div className="h-10 border-b border-black" />
+          <p className="mt-1">{label} · name, signature, time</p>
         </div>
-        <div className="text-right text-[9pt]">
-          <p className="text-[12pt] font-semibold">{dateLabel(r.date)}</p>
+      ))}
+    </footer>
+  );
+
+  return (
+    <article
+      className={cn(
+        "box-border bg-white font-sans leading-snug text-black",
+        receipt ? "w-[80mm] px-[4mm] py-[5mm] text-[8.5pt]" : "min-h-[297mm] w-[210mm] px-[14mm] py-[14mm] text-[10.5pt]",
+        printOnly && "hidden print:block print:min-h-0",
+      )}
+    >
+      {printOnly && (
+        <style>{receipt ? "@page { size: 80mm auto; margin: 0; }" : "@page { size: A4 portrait; margin: 0; }"}</style>
+      )}
+      <header className={cn("mb-4 border-b-2 border-black pb-2", receipt ? "text-center" : "flex items-end justify-between")}>
+        <div>
+          <p className="text-[0.85em] tracking-wide uppercase">{me.company.name || "Store"} · Day report</p>
+          <h1 className={cn("font-bold", receipt ? "text-[12pt]" : "text-[16pt]")}>{r.store.name}</h1>
+        </div>
+        <div className={cn("text-[0.85em]", !receipt && "text-right")}>
+          <p className={cn("font-semibold", receipt ? "text-[10pt]" : "text-[12pt]")}>{dateLabel(r.date)}</p>
           <p>
-            Printed {new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} by {me.full_name}
+            Printed {printed} by {me.full_name}
           </p>
         </div>
       </header>
 
-      <div className="mb-5 grid grid-cols-2 gap-6">
-        <PrintSection title="Totals">
-          <PaperTable
-            rows={[
-              ["Sales", `${r.sales.count}${r.sales.voided ? ` (${r.sales.voided} voided)` : ""} · ${qty(r.sales.items)} items`],
-              ["Before discount", money(r.sales.gross)],
-              ["Discounts", r.sales.discount ? `−${money(r.sales.discount)}` : "—"],
-              ["Before tax", money(r.sales.subtotal)],
-              ["PPN", money(r.sales.tax)],
-              ["Sales total", money(r.sales.total)],
-              [`Refunds (${r.returns.count} return${r.returns.count === 1 ? "" : "s"}, ${r.returns.voids} void${r.returns.voids === 1 ? "" : "s"})`, r.returns.total ? `−${money(r.returns.total)}` : "—"],
-            ]}
-            total={["Net takings", money(r.net.total)]}
-          />
-        </PrintSection>
-        <PrintSection title="By payment method">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className={head}>Method</th>
-                <th className={`${head} text-right`}>Taken</th>
-                <th className={`${head} text-right`}>Refunded</th>
-                <th className={`${head} text-right`}>Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.by_method.map((m) => (
-                <tr key={m.method}>
-                  <td className={cell}>{METHOD_LABEL[m.method]}</td>
-                  <td className={`${cell} text-right tabular-nums`}>{money(m.taken)}</td>
-                  <td className={`${cell} text-right tabular-nums`}>{m.refunded ? `−${money(m.refunded)}` : "—"}</td>
-                  <td className={`${cell} text-right font-medium tabular-nums`}>{money(m.net)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-[9pt]">
-            Cash put in {money(r.cash.in)} · taken out {money(r.cash.out)}
-            {r.points.earned || r.points.redeemed ? ` · points earned ${qty(r.points.earned)}, spent ${qty(r.points.redeemed)}` : ""}
-          </p>
-          <p className="text-[9pt]">
-            ERP: {r.erp.waiting + r.erp.refused === 0 ? "everything booked" : `${r.erp.waiting} waiting, ${r.erp.refused} refused`}
-            {r.sales.offline ? ` · ${r.sales.offline} sale(s) rung up offline` : ""}
-          </p>
-        </PrintSection>
-      </div>
-
-      <PrintSection title="Shifts">
-        {r.shifts.length === 0 ? (
-          <p>No shift opened that day.</p>
-        ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className={head}>Shift</th>
-                <th className={head}>Cashier</th>
-                <th className={head}>Hours</th>
-                <th className={`${head} text-right`}>Float</th>
-                <th className={`${head} text-right`}>Expected</th>
-                <th className={`${head} text-right`}>Counted</th>
-                <th className={`${head} text-right`}>Over / short</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.shifts.map((s) => (
-                <tr key={s.id}>
-                  <td className={`${cell} font-mono text-[9pt]`}>{s.number}</td>
-                  <td className={cell}>{s.cashier}</td>
-                  <td className={cell}>
-                    {timeLabel(s.opened_at)}–{s.closed_at ? timeLabel(s.closed_at) : "still open"}
-                  </td>
-                  <td className={`${cell} text-right tabular-nums`}>{money(s.opening_float)}</td>
-                  <td className={`${cell} text-right tabular-nums`}>{money(s.expected_cash)}</td>
-                  <td className={`${cell} text-right tabular-nums`}>{money(s.counted_cash)}</td>
-                  <td className={`${cell} text-right tabular-nums`}>{variance(s.variance)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </PrintSection>
-
-      <div className="mt-5 grid grid-cols-2 gap-6">
-        <div className="flex flex-col gap-5">
-          <PrintSection title="By cashier">
-            <PaperTable
-              rows={r.by_cashier.map((c) => [
-                `${c.name} · ${c.sales} sale(s)`,
-                c.refunds ? `${money(c.total)} (−${money(c.refunds)})` : money(c.total),
-              ])}
-              empty="No sales."
-            />
-          </PrintSection>
-          <PrintSection title="Promotions used">
-            <PaperTable rows={r.promotions.map((p) => [`${p.name} · ${p.lines} line(s)`, `−${money(p.discount)}`])} empty="None." />
-          </PrintSection>
+      {receipt ? (
+        <div className="flex flex-col gap-4">
+          {totals}
+          {payments}
+          {shifts}
+          {cashiers}
+          {products}
+          {promotions}
+          {signatures}
         </div>
-        <PrintSection title="Top products">
-          <PaperTable rows={r.top_products.map((p) => [`${qty(p.qty)} × ${p.name}`, money(p.total)])} empty="No sales." />
-        </PrintSection>
-      </div>
-
-      <footer className="mt-10 grid grid-cols-2 gap-10 text-[9pt]" style={{ breakInside: "avoid" }}>
-        {["Drawer counted by", "Checked by (supervisor)"].map((label) => (
-          <div key={label}>
-            <div className="h-10 border-b border-black" />
-            <p className="mt-1">{label} · name, signature, time</p>
+      ) : (
+        <>
+          <div className="mb-5 grid grid-cols-2 gap-6">
+            {totals}
+            {payments}
           </div>
-        ))}
-      </footer>
+          {shifts}
+          {(cashiers || promotions || products) && (
+            <div className="mt-5 grid grid-cols-2 gap-6">
+              <div className="flex flex-col gap-5">
+                {cashiers}
+                {promotions}
+              </div>
+              {products}
+            </div>
+          )}
+          {signatures}
+        </>
+      )}
     </article>
   );
 }
@@ -370,9 +555,28 @@ function PrintReport({ report: r }: { report: DayReport }) {
 function PrintSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section style={{ breakInside: "avoid" }}>
-      <h2 className="mb-1 text-[11pt] font-bold">{title}</h2>
+      <h2 className="mb-1 text-[1.05em] font-bold">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function Th({ children, right }: { children: ReactNode; right?: boolean }) {
+  return <th className={cn("border-b border-black py-1 text-[0.85em] font-semibold", right ? "text-right" : "text-left")}>{children}</th>;
+}
+
+function Td({ children, right, bold, mono }: { children: ReactNode; right?: boolean; bold?: boolean; mono?: boolean }) {
+  return (
+    <td
+      className={cn(
+        "border-b border-neutral-300 py-1",
+        right && "text-right whitespace-nowrap tabular-nums",
+        bold && "font-medium",
+        mono && "font-mono text-[0.85em]",
+      )}
+    >
+      {children}
+    </td>
   );
 }
 
@@ -384,7 +588,7 @@ function PaperTable({ rows, total, empty }: { rows: [string, string][]; total?: 
       <tbody>
         {rows.map(([label, value], i) => (
           <tr key={i} className="align-top">
-            <td className="border-b border-neutral-300 py-1 pr-3">{label}</td>
+            <td className="border-b border-neutral-300 py-1 pr-3 whitespace-pre-wrap">{label}</td>
             <td className="border-b border-neutral-300 py-1 text-right whitespace-nowrap tabular-nums">{value}</td>
           </tr>
         ))}
