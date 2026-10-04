@@ -485,7 +485,7 @@ function PaperReport({ report: r, options, printOnly = false }: { report: DayRep
     </PrintSection>
   );
   const signatures = on.signatures && (
-    <footer className={cn("grid text-[0.85em]", receipt ? "mt-6 gap-6" : "mt-10 grid-cols-2 gap-10")} style={{ breakInside: "avoid" }}>
+    <footer className={cn("grid text-[0.85em]", receipt ? "mt-6 gap-6" : "mt-8 grid-cols-2 gap-10")} style={{ breakInside: "avoid" }}>
       {["Drawer counted by", "Checked by (supervisor)"].map((label) => (
         <div key={label}>
           <div className="h-10 border-b border-black" />
@@ -499,9 +499,11 @@ function PaperReport({ report: r, options, printOnly = false }: { report: DayRep
     <article
       className={cn(
         "box-border bg-white font-sans leading-snug text-black",
-        receipt ? "w-[80mm] px-[4mm] py-[5mm] text-[8.5pt]" : "min-h-[297mm] w-[210mm] px-[14mm] py-[14mm] text-[10.5pt]",
+        receipt ? "w-[80mm] px-[4mm] py-[5mm] text-[8.5pt]" : "min-h-[297mm] w-[210mm] px-[14mm] py-[12mm] text-[10pt]",
         printOnly && "hidden print:block print:min-h-0",
       )}
+      // A long day runs onto a second page: repeat the padding there, since the page itself has no margin.
+      style={{ boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" }}
     >
       {printOnly && (
         <style>{receipt ? "@page { size: 80mm auto; margin: 0; }" : "@page { size: A4 portrait; margin: 0; }"}</style>
@@ -562,14 +564,14 @@ function PrintSection({ title, children }: { title: string; children: ReactNode 
 }
 
 function Th({ children, right }: { children: ReactNode; right?: boolean }) {
-  return <th className={cn("border-b border-black py-1 text-[0.85em] font-semibold", right ? "text-right" : "text-left")}>{children}</th>;
+  return <th className={cn("border-b border-black py-[3px] text-[0.85em] font-semibold text-black", right ? "text-right" : "text-left")}>{children}</th>;
 }
 
 function Td({ children, right, bold, mono }: { children: ReactNode; right?: boolean; bold?: boolean; mono?: boolean }) {
   return (
     <td
       className={cn(
-        "border-b border-neutral-300 py-1",
+        "border-b border-neutral-300 py-[3px] text-black",
         right && "text-right whitespace-nowrap tabular-nums",
         bold && "font-medium",
         mono && "font-mono text-[0.85em]",
@@ -588,14 +590,14 @@ function PaperTable({ rows, total, empty }: { rows: [string, string][]; total?: 
       <tbody>
         {rows.map(([label, value], i) => (
           <tr key={i} className="align-top">
-            <td className="border-b border-neutral-300 py-1 pr-3 whitespace-pre-wrap">{label}</td>
-            <td className="border-b border-neutral-300 py-1 text-right whitespace-nowrap tabular-nums">{value}</td>
+            <td className="border-b border-neutral-300 py-[3px] pr-3 whitespace-pre-wrap text-black">{label}</td>
+            <td className="border-b border-neutral-300 py-[3px] text-right whitespace-nowrap text-black tabular-nums">{value}</td>
           </tr>
         ))}
         {total && (
           <tr className="font-bold">
-            <td className="border-t-2 border-black py-1.5">{total[0]}</td>
-            <td className="border-t-2 border-black py-1.5 text-right whitespace-nowrap tabular-nums">{total[1]}</td>
+            <td className="border-t-2 border-black py-1 text-black">{total[0]}</td>
+            <td className="border-t-2 border-black py-1 text-right whitespace-nowrap text-black tabular-nums">{total[1]}</td>
           </tr>
         )}
       </tbody>
