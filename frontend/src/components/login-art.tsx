@@ -1,31 +1,43 @@
+import { useId } from "react";
+
 /** The picture beside the login form: violet hills with terraces, a sun and clouds, and in front
  * the building the app is about (a shop for the POS, a warehouse for the ERP). Drawn inline, so
  * there are no image files to load; its colours are fixed, it sits on its own panel in both themes.
  * Kept identical in the ERP and the POS (components/login-art.tsx). */
-export function LoginArt({ variant }: { variant: "erp" | "pos" }) {
+export function LoginArt({ variant, anchor = "center" }: { variant: "erp" | "pos"; anchor?: "center" | "bottom" }) {
+  // Gradient ids are per picture: the page may hold two (a phone banner and the side panel), and
+  // a reference into the hidden one would leave the visible one without colours.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const id = (name: string) => `${uid}-${name}`;
   return (
-    <svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 size-full" aria-hidden>
+    <svg
+      // A wide, short strip frames just the building and the hills around it, roof to ground.
+      viewBox={anchor === "bottom" ? "0 280 400 190" : "0 0 400 520"}
+      preserveAspectRatio="xMidYMid slice"
+      className="absolute inset-0 size-full"
+      aria-hidden
+    >
       <defs>
-        <linearGradient id="la-sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id("sky")} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#5b4bdb" />
           <stop offset="0.55" stopColor="#8b6cf0" />
           <stop offset="1" stopColor="#c4b5fd" />
         </linearGradient>
-        <linearGradient id="la-far" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id("far")} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#a78bfa" />
           <stop offset="1" stopColor="#8b5cf6" />
         </linearGradient>
-        <linearGradient id="la-mid" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id("mid")} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#7c5ce8" />
           <stop offset="1" stopColor="#5b3fc4" />
         </linearGradient>
-        <linearGradient id="la-near" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id("near")} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#4c33b0" />
           <stop offset="1" stopColor="#2e1d78" />
         </linearGradient>
       </defs>
 
-      <rect width="400" height="520" fill="url(#la-sky)" />
+      <rect width="400" height="520" fill={`url(#${id("sky")})`} />
       <circle cx="300" cy="196" r="44" fill="#fde68a" opacity="0.9" />
       <circle cx="300" cy="196" r="66" fill="#fde68a" opacity="0.15" />
       <g fill="#ffffff" opacity="0.75">
@@ -35,8 +47,8 @@ export function LoginArt({ variant }: { variant: "erp" | "pos" }) {
         <rect x="258" y="235" width="40" height="20" rx="10" opacity="0.8" />
       </g>
 
-      <path d="M0 300 C70 250 130 270 190 240 C250 210 320 250 400 220 L400 520 L0 520 Z" fill="url(#la-far)" />
-      <path d="M0 360 C80 300 150 330 220 300 C290 270 340 300 400 285 L400 520 L0 520 Z" fill="url(#la-mid)" />
+      <path d="M0 300 C70 250 130 270 190 240 C250 210 320 250 400 220 L400 520 L0 520 Z" fill={`url(#${id("far")})`} />
+      <path d="M0 360 C80 300 150 330 220 300 C290 270 340 300 400 285 L400 520 L0 520 Z" fill={`url(#${id("mid")})`} />
       {/* terraces on the middle hill */}
       <g fill="none" stroke="#ffffff" strokeOpacity="0.28" strokeWidth="2" strokeLinecap="round">
         <path d="M20 372 C90 326 150 352 220 324 C280 300 330 322 390 306" />
@@ -44,7 +56,7 @@ export function LoginArt({ variant }: { variant: "erp" | "pos" }) {
         <path d="M40 412 C108 370 170 392 236 368 C294 346 340 362 394 350" />
         <path d="M52 432 C116 392 178 412 244 390 C300 370 344 384 396 372" />
       </g>
-      <path d="M0 440 C90 400 160 430 240 410 C310 392 350 410 400 400 L400 520 L0 520 Z" fill="url(#la-near)" />
+      <path d="M0 440 C90 400 160 430 240 410 C310 392 350 410 400 400 L400 520 L0 520 Z" fill={`url(#${id("near")})`} />
 
       {variant === "pos" ? <Shop /> : <Warehouse />}
     </svg>

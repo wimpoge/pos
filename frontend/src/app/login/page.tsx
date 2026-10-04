@@ -45,9 +45,14 @@ export default function LoginPage() {
 
   return (
     // The whole window: the form on the left half, the illustration filling the right half.
-    <div className="grid min-h-svh bg-background md:grid-cols-2">
+    <div className="grid min-h-svh bg-background lg:grid-cols-2">
+      {/* Phones and tablets: a strip of the picture above the form. */}
+      <div className="relative aspect-[12/5] max-h-80 w-full overflow-hidden lg:hidden">
+        <LoginArt variant="pos" anchor="bottom" />
+      </div>
       <div className="flex items-center justify-center p-8 sm:p-12">
-        <div className="flex w-full max-w-md flex-col gap-8">
+        {/* Big screens: the form grows with the window, as the picture does. */}
+        <div className="flex w-full max-w-md flex-col gap-8 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
           <div className="flex items-center gap-2 font-semibold">
             <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-white">
               <ShoppingCart className="size-5" />
@@ -142,9 +147,9 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="relative hidden overflow-hidden md:block">
+      <div className="relative hidden overflow-hidden lg:block">
         <LoginArt variant="pos" />
-        <div className="absolute inset-x-0 top-0 p-12 text-white lg:p-16">
+        <div className="absolute inset-x-0 top-0 p-12 text-white lg:p-16 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
           <p className="text-sm font-medium tracking-wide text-white/80 uppercase">Point of sale</p>
           <p className="mt-2 max-w-sm text-3xl leading-snug font-semibold">
             Sell fast. Keep selling when the network doesn&apos;t.
