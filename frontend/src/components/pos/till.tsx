@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Keyboard,
+  LayoutGrid,
+  List,
   MonitorSmartphone,
   Minus,
   PackageSearch,
@@ -162,6 +164,20 @@ export function Till({ storeId }: { storeId: number }) {
 
   const catalog = useCatalog(storeId);
   const [search, setSearch] = useState("");
+  // Tiles or rows; remembered in this browser.
+  const [view, setView] = useState<"grid" | "list">(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem("pos-till-view") === "list" ? "list" : "grid";
+    } catch {
+      return "grid";
+    }
+  });
+  function chooseView(next: "grid" | "list") {
+    setView(next);
+    try {
+      localStorage.setItem("pos-till-view", next);
+    } catch {}
+  }
   const [category, setCategory] = useState<string | null>(null);
   // The cart survives a reload: a refreshed tab must not lose a half-scanned basket.
   const [cart, setCart] = useState<SavedCart>(() => (typeof window === "undefined" ? EMPTY_CART : loadSaved(cartKey, EMPTY_CART)));
@@ -698,24 +714,54 @@ export function Till({ storeId }: { storeId: number }) {
             <Keyboard />
           </Button>
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          <Button size="sm" variant={category === null ? "default" : "outline"} onClick={() => setCategory(null)}>
-            All
-          </Button>
-          {catalog.data?.categories.map((c) => (
-            <Button key={c} size="sm" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>
-              {c}
+        <div className="flex items-start gap-2">
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1">
+            <Button size="sm" variant={category === null ? "default" : "outline"} onClick={() => setCategory(null)}>
+              All
             </Button>
-          ))}
+            {catalog.data?.categories.map((c) => (
+              <Button key={c} size="sm" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>
+                {c}
+              </Button>
+            ))}
+          </div>
+          <div className="flex shrink-0 rounded-lg border p-0.5" role="group" aria-label="Show products as">
+            {(
+              [
+                ["grid", LayoutGrid, "Tiles"],
+                ["list", List, "List"],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <Button
+                key={value}
+                size="icon-sm"
+                variant={view === value ? "secondary" : "ghost"}
+                aria-label={label}
+                aria-pressed={view === value}
+                title={label}
+                onClick={() => chooseView(value)}
+              >
+                <Icon />
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {catalog.isPending ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
-              {Array.from({ length: 12 }, (_, i) => (
-                <Skeleton key={i} className="h-28" />
-              ))}
-            </div>
+            view === "list" ? (
+              <div className="flex flex-col gap-1">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <Skeleton key={i} className="h-14" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+                {Array.from({ length: 12 }, (_, i) => (
+                  <Skeleton key={i} className="h-28" />
+                ))}
+              </div>
+            )
           ) : visible.length === 0 ? (
             <Empty>
               <EmptyHeader>
@@ -728,6 +774,52 @@ export function Till({ storeId }: { storeId: number }) {
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
+          ) : view === "list" ? (
+            <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+              {visible.map((p) => {
+                const left = p.available - inCart(p.id);
+                const promo = promoFor.get(p.id);
+                const taken = inCart(p.id);
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      disabled={left <= 0}
+                      onClick={() => add(p)}
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ProductImage category={p.category} size="md" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{p.name}</span>
+                        <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                          <span className="shrink-0 font-mono">{p.sku}</span>
+                          {p.brand && <span className="hidden truncate sm:inline">· {p.brand}</span>}
+                          {promo && (
+                            <span className="flex min-w-0 items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+                              <Tag className="size-3 shrink-0" />
+                              <span className="truncate">{promo}</span>
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      {taken > 0 && (
+                        <Badge variant="default" className="tabular-nums" title="In the cart">
+                          {fmtQty(taken)} in cart
+                        </Badge>
+                      )}
+                      <span className="w-28 shrink-0 text-right font-semibold tabular-nums">{money(p.price)}</span>
+                      <Badge
+                        variant={left <= 0 ? "destructive" : left <= me.low_stock_at ? "secondary" : "outline"}
+                        className="w-12 shrink-0 justify-center tabular-nums"
+                        title={left <= 0 ? "None left here" : `${fmtQty(left)} left here`}
+                      >
+                        {left <= 0 ? "Out" : fmtQty(left)}
+                      </Badge>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
               {visible.map((p) => {
