@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 export const SHORTCUTS: [key: string, what: string][] = [
   ["F1", "These shortcuts"],
   ["F2", "Scan or search"],
+  ["F3", "Open the cart"],
   ["F4", "Pick the customer"],
   ["F6", "Put the cart on hold"],
   ["F7", "Carts on hold"],

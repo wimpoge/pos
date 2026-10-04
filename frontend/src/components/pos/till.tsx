@@ -366,11 +366,17 @@ export function Till({ storeId }: { storeId: number }) {
     onSuccess: ({ sale, offline }) => finish(sale, offline),
   });
 
+  /** The voucher field is in the cart drawer: open it, then focus the field once it is there. */
+  function focusVoucher() {
+    setDrawer(true);
+    setTimeout(() => voucherRef.current?.focus(), 150);
+  }
+
   function pay() {
     if (!cart.lines.length || !me.erp_ready) return;
     if (totals.voucherError) {
       toast.error(totals.voucherError);
-      voucherRef.current?.focus();
+      focusVoucher();
       return;
     }
     setDrawer(false);
@@ -389,7 +395,8 @@ export function Till({ storeId }: { storeId: number }) {
           if (cart.lines.length && !hold.isPending) hold.mutate();
         },
         F7: () => setHolding(true),
-        F8: () => voucherRef.current?.focus(),
+        F3: () => setDrawer(true),
+        F8: focusVoucher,
         F9: pay,
         F10: () => router.push("/returns"),
       };
@@ -744,7 +751,8 @@ export function Till({ storeId }: { storeId: number }) {
           Prices exclude PPN {me.company.tax_rate}%. Stock is the ERP&apos;s at the last sync, less sales not booked there yet.
           Press F1 for shortcuts.
         </p>
-        <div className="flex gap-2 border-t pt-3 lg:hidden">
+        {/* The cart lives in a drawer: the products keep the whole width. */}
+        <div className="flex gap-2 border-t pt-3">
           <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1 justify-between" onClick={() => setDrawer(true)}>
             <span className="flex items-center gap-2">
               <ShoppingCart />
@@ -752,20 +760,24 @@ export function Till({ storeId }: { storeId: number }) {
               <Badge variant={itemCount ? "default" : "secondary"} className="tabular-nums">
                 {fmtQty(itemCount)}
               </Badge>
+              {cart.customer && <span className="hidden truncate text-muted-foreground sm:inline">· {cart.customer.name}</span>}
+              <kbd className="hidden text-xs opacity-60 md:inline">F3</kbd>
             </span>
             <span className="truncate font-semibold tabular-nums">{money(totals.total)}</span>
           </Button>
+          <Button variant="outline" size="lg" className="h-12" aria-label="Put on hold (F6)" title="Put on hold (F6)"
+            disabled={!cart.lines.length || hold.isPending} onClick={() => hold.mutate()}>
+            {hold.isPending ? <Spinner /> : <PauseCircle />}
+          </Button>
           <Button size="lg" className="h-12 px-6 text-base" disabled={!cart.lines.length || !me.erp_ready} onClick={pay}>
-            Pay
+            Pay <kbd className="ml-1 hidden text-xs opacity-60 md:inline">F9</kbd>
           </Button>
         </div>
       </section>
 
-      {/* ---------------------------------------------------------------- cart */}
-      <aside className="hidden min-h-0 w-[26rem] shrink-0 flex-col border-l bg-muted/30 lg:flex">{cartPanel}</aside>
-      {/* Narrower screens: the products get the width; the cart slides in from the right. */}
+      {/* ---------------------------------------------------------------- cart drawer */}
       <Sheet open={drawer} onOpenChange={setDrawer}>
-        <SheetContent side="right" className="gap-0 bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md lg:hidden">
+        <SheetContent side="right" className="gap-0 bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
           <SheetHeader className="border-b bg-background">
             <SheetTitle>Cart · {fmtQty(itemCount)} item(s)</SheetTitle>
           </SheetHeader>
