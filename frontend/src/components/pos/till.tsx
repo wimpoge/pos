@@ -44,7 +44,7 @@ import { useMe, type Me } from "@/lib/auth";
 import { openDisplay, publishDisplay } from "@/lib/display";
 import { money, qty as fmtQty } from "@/lib/format";
 import { newSaleId, queueSale, type CheckoutBody } from "@/lib/offline";
-import { cartTotals, type CartLine, type CartTotals } from "@/lib/pricing";
+import { cartTotals, shelfPrice, type CartLine, type CartTotals } from "@/lib/pricing";
 import type { Catalog, CatalogProduct, Customer, HeldCart, PaymentMethod, Sale, SyncRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -138,6 +138,41 @@ function offlineReceipt(
   };
 }
 
+/** What a promotion does to a product: "−10%", "Special price", "Buy 2 get 1". */
+function PromoBadge({ text, title, className }: { text: string; title: string | null; className?: string }) {
+  return (
+    <span
+      title={title ?? undefined}
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white",
+        className,
+      )}
+    >
+      <Tag className="size-3 shrink-0" />
+      <span className="truncate">{text}</span>
+    </span>
+  );
+}
+
+/** Units left in this store: muted when plenty, amber when low, red when gone. */
+function StockBadge({ left, lowAt, className }: { left: number; lowAt: number; className?: string }) {
+  return (
+    <Badge
+      variant={left <= 0 ? "destructive" : "outline"}
+      title={left <= 0 ? "None left in this store" : `${left} left in this store`}
+      className={cn(
+        "shrink-0 tabular-nums",
+        left > 0 && "bg-background/90",
+        left > 0 && left <= lowAt && "border-amber-500/60 text-amber-700 dark:text-amber-400",
+        left <= 0 && "bg-destructive text-white",
+        className,
+      )}
+    >
+      {left <= 0 ? "Out" : `${fmtQty(left)} left`}
+    </Badge>
+  );
+}
+
 /** A short beep for a scan, when the cashier wants one. */
 let audio: AudioContext | null = null;
 function beep() {
@@ -211,19 +246,11 @@ export function Till({ storeId }: { storeId: number }) {
           (p.brand ?? "").toLowerCase().includes(term)),
     );
   }, [products, search, category]);
-  /** The promotion to mention on a product's tile. */
-  const promoFor = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const promo of catalog.data?.promotions ?? []) {
-      if (promo.kind === "voucher") continue;
-      for (const p of products) {
-        const covered = promo.product_id !== null ? promo.product_id === p.id
-          : promo.category !== null ? promo.category === p.category : promo.kind === "percent";
-        if (covered && !map.has(p.id)) map.set(p.id, promo.name);
-      }
-    }
-    return map;
-  }, [catalog.data, products]);
+  /** Each product's shelf price today: the best running promotion, and what its label says. */
+  const shelf = useMemo(
+    () => new Map(products.map((p) => [p.id, shelfPrice(p, catalog.data?.promotions ?? [], storeId)])),
+    [catalog.data, products, storeId],
+  );
 
   const customerDiscount = cart.customer?.discount_pct ?? 0;
   const totals = cartTotals(
@@ -756,9 +783,9 @@ export function Till({ storeId }: { storeId: number }) {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {Array.from({ length: 12 }, (_, i) => (
-                  <Skeleton key={i} className="h-28" />
+                  <Skeleton key={i} className="h-56" />
                 ))}
               </div>
             )
@@ -778,80 +805,72 @@ export function Till({ storeId }: { storeId: number }) {
             <ul className="divide-y overflow-hidden rounded-xl border bg-card">
               {visible.map((p) => {
                 const left = p.available - inCart(p.id);
-                const promo = promoFor.get(p.id);
                 const taken = inCart(p.id);
+                const sp = shelf.get(p.id)!;
                 return (
                   <li key={p.id}>
                     <button
                       type="button"
                       disabled={left <= 0}
                       onClick={() => add(p)}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ProductImage category={p.category} size="md" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{p.name}</span>
-                        <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                          <span className="shrink-0 font-mono">{p.sku}</span>
-                          {p.brand && <span className="hidden truncate sm:inline">· {p.brand}</span>}
-                          {promo && (
-                            <span className="flex min-w-0 items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
-                              <Tag className="size-3 shrink-0" />
-                              <span className="truncate">{promo}</span>
-                            </span>
-                          )}
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                          <span className="font-mono">{p.sku}</span>
+                          {p.brand && <span className="hidden sm:inline">· {p.brand}</span>}
+                          {sp.badge && <PromoBadge text={sp.badge} title={sp.promo} />}
                         </span>
                       </span>
                       {taken > 0 && (
-                        <Badge variant="default" className="tabular-nums" title="In the cart">
+                        <Badge variant="default" className="hidden tabular-nums sm:inline-flex" title="In the cart">
                           {fmtQty(taken)} in cart
                         </Badge>
                       )}
-                      <span className="w-28 shrink-0 text-right font-semibold tabular-nums">{money(p.price)}</span>
-                      <Badge
-                        variant={left <= 0 ? "destructive" : left <= me.low_stock_at ? "secondary" : "outline"}
-                        className="w-12 shrink-0 justify-center tabular-nums"
-                        title={left <= 0 ? "None left here" : `${fmtQty(left)} left here`}
-                      >
-                        {left <= 0 ? "Out" : fmtQty(left)}
-                      </Badge>
+                      <span className="shrink-0 text-right tabular-nums">
+                        <span className="block font-semibold">{money(sp.price)}</span>
+                        {sp.price < p.price && <s className="block text-xs text-muted-foreground">{money(p.price)}</s>}
+                      </span>
+                      <StockBadge left={left} lowAt={me.low_stock_at} />
                     </button>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {visible.map((p) => {
                 const left = p.available - inCart(p.id);
-                const promo = promoFor.get(p.id);
+                const taken = inCart(p.id);
+                const sp = shelf.get(p.id)!;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     disabled={left <= 0}
                     onClick={() => add(p)}
-                    className="flex min-h-28 flex-col justify-between gap-2 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/50 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <ProductImage category={p.category} size="lg" />
-                    <span className="line-clamp-2 text-sm font-medium">{p.name}</span>
-                    {promo && (
-                      <span className="flex min-w-0 items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                        <Tag className="size-3 shrink-0" />
-                        <span className="truncate">{promo}</span>
+                    {/* The picture carries the labels: promotion top left, stock top right, cart bottom right. */}
+                    <span className="relative block">
+                      <ProductImage category={p.category} size="lg" className="h-24" />
+                      {sp.badge && <PromoBadge text={sp.badge} title={sp.promo} className="absolute top-2 left-2" />}
+                      <StockBadge left={left} lowAt={me.low_stock_at} className="absolute top-2 right-2" />
+                      {taken > 0 && (
+                        <Badge className="absolute right-2 bottom-2 tabular-nums">{fmtQty(taken)} in cart</Badge>
+                      )}
+                    </span>
+                    <span className="flex min-h-10 flex-col">
+                      <span className="line-clamp-2 text-sm leading-5 font-medium">{p.name}</span>
+                    </span>
+                    <span className="mt-auto flex flex-wrap items-baseline justify-between gap-x-2">
+                      <span className="font-mono text-[11px] text-muted-foreground">{p.sku}</span>
+                      <span className="text-right tabular-nums">
+                        {sp.price < p.price && <s className="mr-1.5 text-xs text-muted-foreground">{money(p.price)}</s>}
+                        <span className="font-semibold">{money(sp.price)}</span>
                       </span>
-                    )}
-                    <span className="flex items-end justify-between gap-2">
-                      <span>
-                        <span className="block font-mono text-[11px] text-muted-foreground">{p.sku}</span>
-                        <span className="font-semibold tabular-nums">{money(p.price)}</span>
-                      </span>
-                      <Badge
-                        variant={left <= 0 ? "destructive" : left <= me.low_stock_at ? "secondary" : "outline"}
-                        className="tabular-nums"
-                      >
-                        {left <= 0 ? "Out" : fmtQty(left)}
-                      </Badge>
                     </span>
                   </button>
                 );

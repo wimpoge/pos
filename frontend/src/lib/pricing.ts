@@ -131,6 +131,35 @@ export function cartTotals(
   return { lines: priced, gross, discount: gross - subtotal, subtotal, tax, total: subtotal + tax, voucher, voucherError };
 }
 
+export type ShelfPrice = {
+  /** One unit's price before tax with the best running promotion (the list price if none beats it). */
+  price: number;
+  /** "−10%", "Special price", "Buy 2 get 1": what the shelf label says, if anything. */
+  badge: string | null;
+  promo: string | null;
+};
+
+/** What one unit costs today on the shelf, for the product tiles. The cart prices the real basket
+ * (quantities, the customer's group discount, vouchers); this is the price a passer-by sees. */
+export function shelfPrice(
+  product: { id: number; category: string | null; price: number },
+  promotions: Promotion[],
+  storeId: number,
+): ShelfPrice {
+  const on = todayIso();
+  const line: CartLine = { productId: product.id, sku: "", name: "", unit: "", price: product.price, category: product.category, qty: 1, discountPct: null };
+  const running = promotions.filter((p) => p.kind !== "voucher" && runs(p, storeId, on) && covers(p, line));
+  let best: ShelfPrice = { price: product.price, badge: null, promo: null };
+  for (const p of running) {
+    if (p.kind === "percent" && lineAmount(1, product.price, p.value) < best.price)
+      best = { price: lineAmount(1, product.price, p.value), badge: `−${p.value}%`, promo: p.name };
+    else if (p.kind === "price" && p.value < best.price) best = { price: p.value, badge: "Special price", promo: p.name };
+  }
+  const freebie = running.find((p) => p.kind === "buy_get" && p.buy_qty > 0 && p.get_qty > 0);
+  if (freebie && !best.badge) return { ...best, badge: `Buy ${freebie.buy_qty} get ${freebie.get_qty}`, promo: freebie.name };
+  return best;
+}
+
 /** Notes a customer is likely to hand over for `total`: exact, then the next round amounts. */
 export function cashSuggestions(total: number): number[] {
   const out = new Set<number>([total]);
