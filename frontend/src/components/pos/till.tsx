@@ -853,23 +853,27 @@ export function Till({ storeId }: { storeId: number }) {
                     onClick={() => add(p)}
                     className="group flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {/* The picture carries the labels: promotion top left, stock top right, cart bottom right. */}
+                    {/* The picture carries the labels, one per corner so they never meet on a narrow tile:
+                        in the cart top left, stock top right, promotion bottom left. */}
                     <span className="relative block">
                       <ProductImage category={p.category} size="lg" className="h-24" />
-                      {sp.badge && <PromoBadge text={sp.badge} title={sp.promo} className="absolute top-2 left-2" />}
-                      <StockBadge left={left} lowAt={me.low_stock_at} className="absolute top-2 right-2" />
                       {taken > 0 && (
-                        <Badge className="absolute right-2 bottom-2 tabular-nums">{fmtQty(taken)} in cart</Badge>
+                        <Badge className="absolute top-2 left-2 tabular-nums">{fmtQty(taken)} in cart</Badge>
+                      )}
+                      <StockBadge left={left} lowAt={me.low_stock_at} className="absolute top-2 right-2" />
+                      {sp.badge && (
+                        <PromoBadge text={sp.badge} title={sp.promo} className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)]" />
                       )}
                     </span>
                     <span className="flex min-h-10 flex-col">
                       <span className="line-clamp-2 text-sm leading-5 font-medium">{p.name}</span>
                     </span>
-                    <span className="mt-auto flex flex-wrap items-baseline justify-between gap-x-2">
+                    <span className="mt-auto flex flex-col gap-0.5">
                       <span className="font-mono text-[11px] text-muted-foreground">{p.sku}</span>
-                      <span className="text-right tabular-nums">
-                        {sp.price < p.price && <s className="mr-1.5 text-xs text-muted-foreground">{money(p.price)}</s>}
+                      {/* New price first; the list price beside it, or under it when the tile is narrow. */}
+                      <span className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
                         <span className="font-semibold">{money(sp.price)}</span>
+                        {sp.price < p.price && <s className="text-xs text-muted-foreground">{money(p.price)}</s>}
                       </span>
                     </span>
                   </button>
