@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Moon, Store as StoreIcon, TriangleAlert } from "lucide-react";
+import { Clock, Moon, Store as StoreIcon, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { FormEvent, useState } from "react";
 import { PageHeader } from "@/components/pos/common";
@@ -11,15 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { EndShiftDialog } from "@/components/pos/end-shift-dialog";
 import { Till } from "@/components/pos/till";
 import { get, post } from "@/lib/api";
 import { useMe } from "@/lib/auth";
-import { todayIso } from "@/lib/format";
+import { money, todayIso } from "@/lib/format";
 import type { DayReport, Shift, Store, SyncRun } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function TillPage() {
   const me = useMe();
@@ -78,6 +79,7 @@ function ClosedForToday() {
 }
 
 function OpenShift() {
+  const me = useMe();
   const queryClient = useQueryClient();
   const stores = useQuery({ queryKey: ["stores"], queryFn: () => get<Store[]>("/api/stores") });
   const load = useMutation({
@@ -126,49 +128,77 @@ function OpenShift() {
     );
 
   const items = stores.data.map((s) => ({ value: String(s.id), label: `${s.name} (${s.code})` }));
+  const floatValue = Number(float.replace(/\D/g, "")) || 0;
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Open a shift</CardTitle>
-          <CardDescription>Pick your store and count the cash in the drawer.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Store</FieldLabel>
-                <Select items={items} value={storeId || null} onValueChange={(v) => setStoreId(String(v ?? ""))}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a store" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {items.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
+    <div className="flex flex-1 flex-col p-4 md:px-6 md:pt-5">
+      <PageHeader title="Till" description={`${me.company.name || "POS"} · no shift open`} />
+      <div className="flex flex-1 items-center justify-center py-8">
+        <Card className="w-full max-w-115 gap-6 px-2">
+          <CardHeader className="flex flex-row items-start gap-3.5">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
+              <Clock className="size-6" />
+            </span>
+            <div>
+              <CardTitle className="text-2xl">Open a shift</CardTitle>
+              <CardDescription className="mt-0.5">Pick your store and count the cash in the drawer.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit}>
+              <FieldGroup className="gap-5">
+                <Field>
+                  <FieldLabel className="font-semibold">Store</FieldLabel>
+                  <Select items={items} value={storeId || null} onValueChange={(v) => setStoreId(String(v ?? ""))}>
+                    <SelectTrigger className="h-13 w-full rounded-xl px-4 text-[15px] data-[size=default]:h-13">
+                      <SelectValue placeholder="Choose a store" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {items.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="float" className="font-semibold">
+                    Opening float
+                  </FieldLabel>
+                  <InputGroup className="h-13 rounded-xl">
+                    <InputGroupAddon className="pl-4 text-base font-semibold">Rp</InputGroupAddon>
+                    <InputGroupInput
+                      id="float"
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="text-lg font-bold tabular-nums"
+                      value={floatValue ? floatValue.toLocaleString("id-ID") : ""}
+                      onChange={(e) => setFloat(e.target.value)}
+                    />
+                  </InputGroup>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[200_000, 300_000, 500_000, 1_000_000].map((v) => (
+                      <Button
+                        key={v}
+                        type="button"
+                        variant="outline"
+                        className={cn("h-10 px-1 text-xs", floatValue === v && "border-primary bg-accent text-accent-foreground")}
+                        onClick={() => setFloat(String(v))}
+                      >
+                        {money(v)}
+                      </Button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="float">Opening float (Rp)</FieldLabel>
-                <Input
-                  id="float"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={float ? Number(float.replace(/\D/g, "")).toLocaleString("id-ID") : ""}
-                  onChange={(e) => setFloat(e.target.value)}
-                />
-                <FieldDescription>The cash you start with, so the drawer can be checked at closing.</FieldDescription>
-              </Field>
-              <Button type="submit" disabled={!storeId || open.isPending}>
-                {open.isPending && <Spinner />} Open shift
-              </Button>
-            </FieldGroup>
-          </form>
-        </CardContent>
-      </Card>
+                  </div>
+                  <FieldDescription>The cash you start with, so the drawer can be checked at closing.</FieldDescription>
+                </Field>
+                <Button type="submit" size="lg" className="h-14 rounded-xl text-base font-bold" disabled={!storeId || open.isPending}>
+                  {open.isPending && <Spinner />} Open shift
+                </Button>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

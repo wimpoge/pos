@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChevronsUpDown,
   ChartColumn,
   Clock,
   KeyRound,
@@ -23,7 +22,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { EndShiftDialog } from "@/components/pos/end-shift-dialog";
 import { useLock } from "@/components/pos/lock";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,19 +33,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar";
 import { api } from "@/lib/api";
 import { forgetMe, useMe } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 type NavItem = { title: string; href: string; icon: LucideIcon };
 
@@ -68,56 +56,56 @@ export function findNav(pathname: string): NavItem | undefined {
   return [...NAV, PROFILE].find((i) => (i.href === "/" ? pathname === "/" : pathname.startsWith(i.href)));
 }
 
-export function AppSidebar() {
-  const me = useMe();
-  const active = findNav(usePathname())?.href;
+const RAIL_ITEM =
+  "flex flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 
+function RailLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
-    <Sidebar collapsible="icon" className="print:hidden">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <ShoppingCart className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">POS</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {me.shift ? me.shift.store.name : me.company.name || "No shift open"}
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {NAV.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton isActive={item.href === active} tooltip={item.title} render={<Link href={item.href} />}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton isActive={active === PROFILE.href} tooltip={PROFILE.title} render={<Link href={PROFILE.href} />}>
-              <PROFILE.icon />
-              <span>{PROFILE.title}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <UserMenu />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        RAIL_ITEM,
+        "h-14 min-w-0 flex-1 md:h-[60px] md:w-[72px] md:flex-none",
+        active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white",
+      )}
+    >
+      <item.icon className="size-5" />
+      {item.title === "Day report" ? "Report" : item.title}
+    </Link>
+  );
+}
+
+/** The navy rail: the work pages, then Profile and the cashier's menu at the bottom. On a phone
+ * it is a bar along the bottom of the screen. */
+export function AppSidebar() {
+  const active = findNav(usePathname())?.href;
+  return (
+    <nav
+      aria-label="Main"
+      data-slot="rail"
+      className={cn(
+        "z-30 flex shrink-0 bg-sidebar print:hidden",
+        // phone: a bar along the bottom
+        "fixed inset-x-0 bottom-0 h-16 items-center justify-around border-t border-sidebar-border px-1",
+        // tablet and up: the rail on the left
+        "md:static md:h-svh md:w-[88px] md:flex-col md:justify-start md:gap-1.5 md:border-t-0 md:px-2 md:py-4",
+      )}
+    >
+      <Link
+        href="/"
+        aria-label="POS"
+        className="mb-4 hidden size-11 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm md:flex"
+      >
+        <ShoppingCart className="size-5" />
+      </Link>
+      {NAV.map((item) => (
+        <RailLink key={item.href} item={item} active={item.href === active} />
+      ))}
+      <div className="hidden flex-1 md:block" />
+      <RailLink item={PROFILE} active={active === PROFILE.href} />
+      <UserMenu />
+    </nav>
   );
 }
 
@@ -146,20 +134,15 @@ function UserMenu() {
   }
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
+    <>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent" />}>
-            <Avatar className="size-8 rounded-lg">
-              <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{me.full_name}</span>
-              <span className="truncate text-xs text-muted-foreground">Cashier</span>
-            </div>
-            <ChevronsUpDown className="ml-auto size-4" />
+          <DropdownMenuTrigger
+            aria-label="Your menu"
+            className="mt-1 hidden size-10 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-white outline-none transition-colors hover:bg-sidebar-primary focus-visible:ring-2 focus-visible:ring-sidebar-ring data-popup-open:bg-sidebar-primary md:flex"
+          >
+            {initials}
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-56" side="top" align="start">
+          <DropdownMenuContent className="min-w-56" side="right" align="end" sideOffset={12}>
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 <div className="grid text-left text-sm leading-tight">
@@ -203,7 +186,6 @@ function UserMenu() {
           </DropdownMenuContent>
         </DropdownMenu>
         <EndShiftDialog shiftId={me.shift?.id ?? null} open={ending} onOpenChange={setEnding} />
-      </SidebarMenuItem>
-    </SidebarMenu>
+    </>
   );
 }

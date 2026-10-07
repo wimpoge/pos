@@ -28,18 +28,17 @@ function ScreenReport({ report: r }: { report: DayReport | undefined }) {
   ) : (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Net takings" value={money(r.net.total)} hint={`incl. PPN ${money(r.net.tax)}`} />
+        <StatCard label="Net takings" tone="ink" value={money(r.net.total)} hint={`incl. PPN ${money(r.net.tax)}`} />
         <StatCard label="Sales" value={r.sales.count} hint={`${qty(r.sales.items)} items · ${money(r.sales.total)}`} />
         <StatCard
           label="Returns and voids"
           value={r.returns.count + r.returns.voids}
           hint={`${r.returns.count} return${r.returns.count === 1 ? "" : "s"} · ${r.returns.voids} void${r.returns.voids === 1 ? "" : "s"} · −${money(r.returns.total)}`}
-          tone={r.returns.total ? "danger" : undefined}
         />
         <StatCard
           label="ERP"
           value={r.erp.waiting + r.erp.refused === 0 ? "All booked" : `${r.erp.waiting + r.erp.refused} open`}
-          tone={r.erp.refused ? "danger" : r.erp.waiting ? undefined : "success"}
+          tone={r.erp.waiting + r.erp.refused ? "warning" : "success"}
           hint={`${r.erp.waiting} waiting · ${r.erp.refused} refused`}
         />
       </div>

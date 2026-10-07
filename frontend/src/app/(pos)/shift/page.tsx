@@ -4,9 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownToLine, ArrowUpFromLine, Clock, Lock } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { PageHeader, StatCard, StatusBadge, Totals } from "@/components/pos/common";
+import { PageHeader, StatCard, StatusBadge, TitlePill, Totals } from "@/components/pos/common";
 import { EndShiftDialog } from "@/components/pos/end-shift-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,11 +36,17 @@ export default function ShiftPage() {
       <PageHeader
         title="Shift"
         description={shift ? `${shift.number} · ${shift.store.name} · opened ${dateTimeLabel(shift.opened_at)}` : "No shift open."}
+        shiftPill={false}
         badge={
-          shift && me.shift?.ends_at ? (
-            <Badge variant="outline">
-              <Clock /> Ends by itself at {timeLabel(me.shift.ends_at)}
-            </Badge>
+          shift ? (
+            <>
+              <TitlePill tone="success">Open</TitlePill>
+              {me.shift?.ends_at && (
+                <TitlePill>
+                  <Clock /> Ends by itself at {timeLabel(me.shift.ends_at)}
+                </TitlePill>
+              )}
+            </>
           ) : undefined
         }
         actions={
@@ -73,7 +78,7 @@ export default function ShiftPage() {
             />
             <StatCard label="Cash sales" value={money(shift.summary.by_method.cash)} hint={shift.summary.refunds_count ? "less cash refunds" : undefined} />
             <StatCard label="Card + QRIS" value={money(shift.summary.by_method.card + shift.summary.by_method.qris)} hint={`${money(shift.summary.by_method.card)} card · ${money(shift.summary.by_method.qris)} QRIS`} />
-            <StatCard label="Drawer should hold" value={money(shift.summary.expected_cash)} />
+            <StatCard label="Drawer should hold" tone="ink" value={money(shift.summary.expected_cash)} hint="float + cash sales ± movements" />
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
@@ -99,7 +104,10 @@ export default function ShiftPage() {
               </CardHeader>
               <CardContent>
                 {shift.movements.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No cash put in or taken out this shift.</p>
+                  <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-subtle px-4 py-8 text-center">
+                    <p className="font-semibold">No movements yet</p>
+                    <p className="text-sm text-muted-foreground">Cash put in or taken out this shift shows here.</p>
+                  </div>
                 ) : (
                   <ul className="flex flex-col gap-2 text-sm">
                     {shift.movements.map((m) => (
@@ -134,9 +142,9 @@ export default function ShiftPage() {
         </Card>
       )}
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Your recent shifts</h2>
-        <Card className="py-0">
+      <div>
+        <Card className="gap-0 pb-0">
+          <h2 className="px-5 pb-3 text-[17px] font-bold">Your recent shifts</h2>
           <Table>
             <TableHeader>
               <TableRow>

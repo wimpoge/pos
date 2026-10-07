@@ -6,8 +6,19 @@
 
 @theme inline {
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-mono-face);
   --font-heading: var(--font-sans);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-subtle: var(--subtle);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,74 +59,99 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Chart colours: validated categorical palette (colour-blind safe in this order). */
+/* Andalas POS design: navy rail, one strong blue, light grey page with white cards (14 px corners),
+   Plus Jakarta Sans. Status colours come in pairs: text on a soft fill. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: #2a78d6;
-  --chart-2: #eb6834;
-  --chart-3: #1baf7a;
-  --chart-4: #eda100;
-  --chart-5: #e87ba4;
+  --background: #f3f4f7;
+  --foreground: #1a1f2b;
+  --card: #ffffff;
+  --card-foreground: #1a1f2b;
+  --popover: #ffffff;
+  --popover-foreground: #1a1f2b;
+  --primary: #0f4fc2;
+  --primary-foreground: #ffffff;
+  --secondary: #edeff3;
+  --secondary-foreground: #1a1f2b;
+  --muted: #edeff3;
+  --muted-foreground: #5b6478;
+  --accent: #eef3fd;
+  --accent-foreground: #0b3a8f;
+  --destructive: #b42318;
+  --border: #e3e6ec;
+  --input: #d9dde5;
+  --ring: #0f4fc2;
+  --chart-1: #0f4fc2;
+  --chart-2: #c2410c;
+  --chart-3: #0f766e;
+  --chart-4: #b45309;
+  --chart-5: #7c3aed;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* the navy rail */
+  --sidebar: #12182b;
+  --sidebar-foreground: #a3abc4;
+  --sidebar-primary: #0f4fc2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #263052;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: #0f4fc2;
+  /* status pairs and the dark highlight card */
+  --success: #17633a;
+  --success-soft: #e6f4ec;
+  --warning: #8a4b00;
+  --warning-soft: #fff1d6;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --info: #1e40af;
+  --info-soft: #dcebff;
+  --ink: #12182b;
+  --ink-foreground: #ffffff;
+  --subtle: #f8f9fb;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-4: #c98500;
-  --chart-5: #d55181;
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0b101c;
+  --foreground: #e8ebf2;
+  --card: #141b2b;
+  --card-foreground: #e8ebf2;
+  --popover: #141b2b;
+  --popover-foreground: #e8ebf2;
+  --primary: #3d7cf2;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2738;
+  --secondary-foreground: #e8ebf2;
+  --muted: #1f2738;
+  --muted-foreground: #9aa3b8;
+  --accent: #1c2a4d;
+  --accent-foreground: #c9dafd;
+  --destructive: #f07167;
+  --border: rgb(255 255 255 / 9%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #3d7cf2;
+  --chart-1: #3d7cf2;
+  --chart-2: #f08a4b;
+  --chart-3: #2bb5a6;
+  --chart-4: #e0a23a;
+  --chart-5: #a78bfa;
+  --sidebar: #070b14;
+  --sidebar-foreground: #8d96ae;
+  --sidebar-primary: #3d7cf2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c2540;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 6%);
+  --sidebar-ring: #3d7cf2;
+  --success: #5fd08e;
+  --success-soft: rgb(95 208 142 / 12%);
+  --warning: #f2b54a;
+  --warning-soft: rgb(242 181 74 / 13%);
+  --danger: #f07167;
+  --danger-soft: rgb(240 113 103 / 13%);
+  --info: #8ab4ff;
+  --info-soft: rgb(138 180 255 / 13%);
+  --ink: #1c2540;
+  --ink-foreground: #ffffff;
+  --subtle: #182033;
 }
 
 @layer base {
@@ -130,6 +166,9 @@
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, [data-slot="card-title"], [data-slot="dialog-title"], [data-slot="sheet-title"] {
+    letter-spacing: -0.01em;
   }
 }
 /* Page content keeps its natural height (detail pages scroll); only a list table marked

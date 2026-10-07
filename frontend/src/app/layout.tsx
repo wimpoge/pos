@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
 
-const sans = Geist({ variable: "--font-sans", subsets: ["latin"] });
-const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const sans = Plus_Jakarta_Sans({ variable: "--font-sans", subsets: ["latin"] });
+// Receipt and document numbers, SKUs: fixed width so they line up.
+const mono = JetBrains_Mono({ variable: "--font-mono-face", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "POS", template: "%s · POS" },

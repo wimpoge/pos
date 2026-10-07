@@ -1,16 +1,16 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Eye, EyeOff, Lock, ShoppingCart, UserRound } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { LoginArt } from "@/components/login-art";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorMessage } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const DEMO = { username: "cashier", label: "Demo cashier" };
 const DEMO_PASSWORD = "demo1234";
@@ -44,41 +44,32 @@ export default function LoginPage() {
   }
 
   return (
-    // The whole window: the form on the left half, the illustration filling the right half.
-    <div className="grid min-h-svh bg-background lg:grid-cols-2">
-      {/* Phones and tablets: a strip of the picture above the form. */}
-      <div className="relative aspect-[12/5] max-h-80 w-full overflow-hidden lg:hidden">
-        <LoginArt variant="pos" anchor="bottom" />
-      </div>
+    // The whole window: the brand panel on the left, the form on the right (stacked on a phone).
+    <div className="grid min-h-svh bg-background lg:grid-cols-[minmax(0,7fr)_minmax(0,9fr)]">
+      <BrandPanel />
       <div className="flex items-center justify-center p-8 sm:p-12">
-        {/* Big screens: the form grows with the window, as the picture does. */}
-        <div className="flex w-full max-w-md flex-col gap-8 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
-          <div className="flex items-center gap-2 font-semibold">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-white">
-              <ShoppingCart className="size-5" />
-            </span>
-            POS
-          </div>
-          <div className="space-y-1.5">
-            <h1 className="text-3xl font-semibold tracking-tight">Welcome back 👋</h1>
-            <p className="text-muted-foreground">Log in with your cashier account from the ERP.</p>
+        {/* Big screens: the form grows with the window. */}
+        <div className="w-full max-w-105 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
+          <div className="mb-6">
+            <h1 className="text-[28px] leading-tight font-bold tracking-tight">Sign in</h1>
+            <p className="mt-1 text-muted-foreground">Use your cashier account from the ERP.</p>
           </div>
 
           <form onSubmit={submit}>
-            <FieldGroup>
+            <FieldGroup className="gap-5">
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
               <Field>
-                <FieldLabel htmlFor="username">Username</FieldLabel>
-                <InputGroup className="h-11 rounded-xl">
-                  <InputGroupAddon>
-                    <UserRound />
-                  </InputGroupAddon>
+                <FieldLabel htmlFor="username" className="font-semibold">
+                  Username
+                </FieldLabel>
+                <InputGroup className="h-13 rounded-xl">
                   <InputGroupInput
                     id="username"
+                    className="px-4 text-[15px]"
                     autoCapitalize="none"
                     spellCheck={false}
                     autoComplete="username"
@@ -91,43 +82,34 @@ export default function LoginPage() {
                 </InputGroup>
               </Field>
               <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <InputGroup className="h-11 rounded-xl">
-                  <InputGroupAddon>
-                    <Lock />
-                  </InputGroupAddon>
+                <FieldLabel htmlFor="password" className="font-semibold">
+                  Password
+                </FieldLabel>
+                <InputGroup className="h-13 rounded-xl">
                   <InputGroupInput
                     id="password"
+                    className="px-4 text-[15px]"
                     type={shown ? "text" : "password"}
                     autoComplete="current-password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupButton
-                      size="icon-xs"
-                      aria-label={shown ? "Hide password" : "Show password"}
-                      onClick={() => setShown(!shown)}
-                    >
+                  <InputGroupAddon align="inline-end" className="pr-3">
+                    <InputGroupButton size="icon-xs" aria-label={shown ? "Hide password" : "Show password"} onClick={() => setShown(!shown)}>
                       {shown ? <EyeOff /> : <Eye />}
                     </InputGroupButton>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-              <Button
-                type="submit"
-                size="lg"
-                className="h-11 rounded-xl bg-violet-600 text-white hover:bg-violet-700"
-                disabled={busy !== null}
-              >
-                {busy === username && <Spinner />} Log in {busy !== username && <ArrowRight />}
+              <Button type="submit" size="lg" className="mt-1 h-14 rounded-xl text-base font-bold" disabled={busy !== null}>
+                {busy === username && <Spinner />} Sign in
               </Button>
               <FieldSeparator>Or try the demo</FieldSeparator>
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 justify-between rounded-xl"
+                className="h-12 justify-between rounded-xl px-4"
                 disabled={busy !== null}
                 onClick={() => login({ username: DEMO.username, password: DEMO_PASSWORD })}
               >
@@ -135,7 +117,7 @@ export default function LoginPage() {
                   {busy === DEMO.username && <Spinner />}
                   {DEMO.label}
                 </span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="font-mono text-xs font-normal text-muted-foreground">
                   {DEMO.username} / {DEMO_PASSWORD}
                 </span>
               </Button>
@@ -146,15 +128,51 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="relative hidden overflow-hidden lg:block">
-        <LoginArt variant="pos" />
-        <div className="absolute inset-x-0 top-0 p-12 text-white lg:p-16 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
-          <p className="text-sm font-medium tracking-wide text-white/80 uppercase">Point of sale</p>
-          <p className="mt-2 max-w-sm text-3xl leading-snug font-semibold">
-            Sell fast. Keep selling when the network doesn&apos;t.
-          </p>
+/** Navy, like the till's rail: the product's promise, and whether the POS server answers. */
+function BrandPanel() {
+  const server = useQuery({
+    queryKey: ["health"],
+    queryFn: async () => (await fetch("/api/health", { cache: "no-store" })).ok,
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const online = server.data === true;
+  return (
+    <div className="flex flex-col justify-between gap-8 bg-sidebar p-8 text-white sm:p-12 lg:p-14">
+      <div className="flex items-center gap-3 min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
+        <span className="flex size-12 items-center justify-center rounded-xl bg-sidebar-primary">
+          <ShoppingCart className="size-6" />
+        </span>
+        <div className="leading-tight">
+          <div className="text-xl font-bold">POS</div>
+          <div className="text-sm text-sidebar-foreground">Point of sale</div>
         </div>
+      </div>
+      <div className="max-w-md min-[1800px]:[zoom:1.25] min-[2400px]:[zoom:1.5] min-[3200px]:[zoom:2]">
+        <h2 className="hidden text-[44px] leading-[1.08] font-extrabold tracking-tight sm:block">
+          Fast checkout. One source of truth in the ERP.
+        </h2>
+        <p className="mt-0 text-[15px] leading-relaxed text-[#c8cede] sm:mt-6">
+          Products, prices, stock and customers come from the ERP. Every sale goes back to it as a sales order, even
+          when the network drops for a while.
+        </p>
+        <dl className="mt-6 hidden space-y-2.5 rounded-xl bg-sidebar-accent/70 px-5 py-4 text-sm sm:block">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-[#c8cede]">POS server</dt>
+            <dd className="flex items-center gap-2 font-semibold">
+              <span className={cn("size-2 rounded-full", server.isPending ? "bg-sidebar-foreground" : online ? "bg-[#4ade80]" : "bg-[#f87171]")} />
+              {server.isPending ? "Checking…" : online ? "Online" : "Can't reach it"}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-[#c8cede]">Your account</dt>
+            <dd className="font-semibold">Checked by the ERP</dd>
+          </div>
+        </dl>
       </div>
     </div>
   );

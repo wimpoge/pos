@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronRight,
   Keyboard,
   LayoutGrid,
   List,
@@ -23,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useApproval } from "@/components/pos/approval";
+import { PageHeader } from "@/components/pos/common";
 import { CustomerPicker } from "@/components/pos/customer-picker";
 import { HeldCartsSheet, useHeldCarts } from "@/components/pos/held-carts";
 import { LowStockSheet } from "@/components/pos/low-stock";
@@ -35,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -144,7 +146,7 @@ function PromoBadge({ text, title, className }: { text: string; title: string | 
     <span
       title={title ?? undefined}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white",
+        "inline-flex max-w-full items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[11px] font-semibold text-white dark:text-background",
         className,
       )}
     >
@@ -161,10 +163,10 @@ function StockBadge({ left, lowAt, className }: { left: number; lowAt: number; c
       variant={left <= 0 ? "destructive" : "outline"}
       title={left <= 0 ? "None left in this store" : `${left} left in this store`}
       className={cn(
-        "shrink-0 tabular-nums",
-        left > 0 && "bg-background/90",
-        left > 0 && left <= lowAt && "border-amber-500/60 text-amber-700 dark:text-amber-400",
-        left <= 0 && "bg-destructive text-white",
+        "h-5 shrink-0 rounded-full border-transparent px-2 text-[11px] font-semibold tabular-nums",
+        left > lowAt && "bg-card/90 text-foreground",
+        left > 0 && left <= lowAt && "bg-warning-soft text-warning",
+        left <= 0 && "bg-card/90 text-muted-foreground",
         className,
       )}
     >
@@ -427,9 +429,14 @@ export function Till({ storeId }: { storeId: number }) {
     onSuccess: ({ sale, offline }) => finish(sale, offline),
   });
 
-  /** The voucher field is in the cart drawer: open it, then focus the field once it is there. */
+  /** The cart is beside the products on a wide screen and in a drawer on a narrow one. */
+  function openCart() {
+    if (!window.matchMedia("(min-width: 1024px)").matches) setDrawer(true);
+  }
+
+  /** The voucher field is in the cart: open the drawer if needed, then focus the field once it is there. */
   function focusVoucher() {
-    setDrawer(true);
+    openCart();
     setTimeout(() => voucherRef.current?.focus(), 150);
   }
 
@@ -456,7 +463,7 @@ export function Till({ storeId }: { storeId: number }) {
           if (cart.lines.length && !hold.isPending) hold.mutate();
         },
         F7: () => setHolding(true),
-        F3: () => setDrawer(true),
+        F3: openCart,
         F8: focusVoucher,
         F9: pay,
         F10: () => router.push("/returns"),
@@ -472,6 +479,7 @@ export function Till({ storeId }: { storeId: number }) {
   });
 
   const maxDiscount = me.max_discount_pct;
+  const shiftLabel = me.shift ? `${me.shift.store.name} · ${me.shift.number}` : "";
   const itemCount = cart.lines.reduce((n, l) => n + l.qty, 0);
   const wallet =
     cart.customer && cart.customer.points > 0 && me.loyalty.point_value > 0
@@ -480,27 +488,45 @@ export function Till({ storeId }: { storeId: number }) {
 
   const cartPanel = (
     <>
-      <div className="flex items-center gap-2 border-b p-3">
-        <Button variant="outline" className="min-w-0 flex-1 justify-start" onClick={() => setPicking(true)}>
-          <UserRound />
-          <span className="truncate">{cart.customer ? cart.customer.name : "Walk-in customer"}</span>
-          <span className="ml-auto flex items-center gap-1">
-            {cart.customer && cart.customer.points > 0 && (
-              <Badge variant="outline" className="tabular-nums">
-                {fmtQty(cart.customer.points)} pts
-              </Badge>
-            )}
-            {customerDiscount > 0 && <Badge variant="secondary">−{customerDiscount}%</Badge>}
+      <div className="flex flex-col gap-3 border-b px-5 pt-5 pb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight">Cart</h2>
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-info-soft px-2 text-xs font-bold text-info tabular-nums">
+            {fmtQty(itemCount)}
           </span>
-        </Button>
-        {cart.customer && (
-          <Button variant="ghost" size="icon" aria-label="Back to walk-in" onClick={() => setCart({ ...cart, customer: null })}>
-            <X />
+          <kbd className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">F3</kbd>
+          <Button variant="link" className="ml-auto h-auto px-0 text-danger" disabled={!cart.lines.length} onClick={clearCart}>
+            Clear
           </Button>
-        )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-dashed border-input bg-subtle px-4 py-2.5 text-left transition-colors hover:border-primary/50 hover:bg-accent"
+          >
+            <UserRound className="size-5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{cart.customer ? cart.customer.name : "Walk-in customer"}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {cart.customer
+                  ? [cart.customer.points > 0 && `${fmtQty(cart.customer.points)} pts`, customerDiscount > 0 && `${cart.customer.group ?? "Group"} −${customerDiscount}%`]
+                      .filter(Boolean)
+                      .join(" · ") || cart.customer.code
+                  : "Search ERP contacts (F4)"}
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          {cart.customer && (
+            <Button variant="ghost" size="icon" aria-label="Back to walk-in" onClick={() => setCart({ ...cart, customer: null })}>
+              <X />
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5">
         {cart.lines.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-2 py-10 text-center text-sm text-muted-foreground">
             Scan or tap products to add them.
@@ -511,7 +537,7 @@ export function Till({ storeId }: { storeId: number }) {
             )}
           </div>
         ) : (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col divide-y">
             {cart.lines.map((cl) => {
               const priced = totals.lines.filter((l) => l.productId === cl.productId);
               const paid = priced.find((l) => !l.free);
@@ -519,12 +545,12 @@ export function Till({ storeId }: { storeId: number }) {
               const lineTotal = priced.reduce((s, l) => s + l.total, 0);
               const overCap = cl.discountPct !== null && paid?.manual && cl.discountPct > Math.max(maxDiscount, customerDiscount);
               return (
-                <li key={cl.productId} className="rounded-lg bg-background p-2 ring-1 ring-foreground/5">
-                  <div className="flex items-start justify-between gap-2">
-                    <ProductImage category={byId.get(cl.productId)?.category ?? cl.category} size="sm" />
+                <li key={cl.productId} className="py-3.5">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{cl.name}</div>
-                      <div className="text-xs text-muted-foreground tabular-nums">
+                      <div className="text-sm leading-snug font-semibold">{cl.name}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                        <span className="font-mono">{cl.sku}</span> ·{" "}
                         {paid && paid.unitPrice < cl.price ? (
                           <>
                             <s>{money(cl.price)}</s> {money(paid.unitPrice)}
@@ -552,16 +578,16 @@ export function Till({ storeId }: { storeId: number }) {
                         </div>
                       )}
                     </div>
-                    <div className="text-right text-sm font-semibold tabular-nums">{money(lineTotal)}</div>
+                    <div className="text-right text-sm font-bold tabular-nums">{money(lineTotal)}</div>
                   </div>
-                  <div className="mt-1.5 flex items-center gap-1">
+                  <div className="mt-2.5 flex items-center gap-2">
                     <Button variant="outline" size="icon-sm" aria-label="One less" onClick={() => setQty(cl.productId, cl.qty - 1)}>
                       <Minus />
                     </Button>
                     <input
                       aria-label="Quantity"
                       inputMode="numeric"
-                      className="h-7 w-11 rounded-md border bg-transparent text-center text-sm tabular-nums"
+                      className="h-9 w-12 rounded-lg border-0 bg-transparent text-center text-sm font-semibold tabular-nums"
                       value={cl.qty}
                       onChange={(e) => setQty(cl.productId, Number(e.target.value.replace(/\D/g, "")) || 0)}
                     />
@@ -576,8 +602,8 @@ export function Till({ storeId }: { storeId: number }) {
                       <input
                         inputMode="numeric"
                         className={cn(
-                          "h-7 w-11 rounded-md border bg-transparent text-center text-sm tabular-nums",
-                          overCap && "border-amber-500 text-amber-700 dark:text-amber-400",
+                          "h-9 w-12 rounded-lg border border-input bg-card text-center text-sm tabular-nums",
+                          overCap && "border-warning text-warning",
                         )}
                         placeholder={String(customerDiscount)}
                         value={cl.discountPct ?? ""}
@@ -589,7 +615,7 @@ export function Till({ storeId }: { storeId: number }) {
                       <Trash2 />
                     </Button>
                   </div>
-                  {overCap && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Over {maxDiscount}%: a supervisor approves at payment.</p>}
+                  {overCap && <p className="mt-1 text-xs text-warning">Over {maxDiscount}%: a supervisor approves at payment.</p>}
                 </li>
               );
             })}
@@ -597,8 +623,8 @@ export function Till({ storeId }: { storeId: number }) {
         )}
       </div>
 
-      <div className="border-t bg-background p-3">
-        <InputGroup className="mb-2 h-8">
+      <div className="border-t px-5 pt-4 pb-5">
+        <InputGroup className="mb-3 h-9">
           <InputGroupAddon>
             <Tag />
           </InputGroupAddon>
@@ -606,7 +632,7 @@ export function Till({ storeId }: { storeId: number }) {
             ref={voucherRef}
             aria-label="Voucher code"
             placeholder="Voucher code (F8)"
-            className="font-mono uppercase"
+            className="font-mono uppercase placeholder:font-sans placeholder:normal-case"
             value={cart.voucher}
             onChange={(e) => setCart({ ...cart, voucher: e.target.value.toUpperCase() })}
             onKeyDown={(e) => e.key === "Enter" && searchRef.current?.focus()}
@@ -620,13 +646,13 @@ export function Till({ storeId }: { storeId: number }) {
           )}
         </InputGroup>
         {cart.voucher && cart.lines.length > 0 && (
-          <p className={cn("mb-2 text-xs", totals.voucherError ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}>
+          <p className={cn("mb-2 text-xs", totals.voucherError ? "text-destructive" : "text-success")}>
             {totals.voucherError ?? `${totals.voucher?.name}: ${totals.voucher?.value}% off where it beats other prices.`}
           </p>
         )}
-        <dl className="space-y-1 text-sm">
+        <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground">
-            <dt>Subtotal</dt>
+            <dt>Subtotal ({fmtQty(itemCount)} items)</dt>
             <dd className="tabular-nums">{money(totals.gross)}</dd>
           </div>
           {totals.discount > 0 && (
@@ -639,34 +665,31 @@ export function Till({ storeId }: { storeId: number }) {
             <dt>PPN {me.company.tax_rate}%</dt>
             <dd className="tabular-nums">{money(totals.tax)}</dd>
           </div>
-          <div className="flex justify-between pt-1 text-xl font-semibold">
-            <dt>Total</dt>
-            <dd className="tabular-nums">{money(totals.total)}</dd>
+          <div className="flex items-baseline justify-between border-t pt-3">
+            <dt className="text-base font-semibold">Total</dt>
+            <dd className="text-[28px] leading-none font-extrabold tracking-tight tabular-nums">{money(totals.total)}</dd>
           </div>
         </dl>
-        <div className="mt-3 flex gap-2">
-          <Button variant="outline" size="lg" className="h-12" disabled={!cart.lines.length} onClick={clearCart}>
-            Clear
-          </Button>
+        <div className="mt-4 flex gap-2">
           <Tooltip>
             <TooltipTrigger
               render={
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-12"
-                  aria-label="Put on hold"
+                  className="h-14 px-5 text-base"
                   disabled={!cart.lines.length || hold.isPending}
                   onClick={() => hold.mutate()}
                 />
               }
             >
-              {hold.isPending ? <Spinner /> : <PauseCircle />}
+              {hold.isPending && <Spinner />} Hold
             </TooltipTrigger>
             <TooltipContent>Put on hold (F6)</TooltipContent>
           </Tooltip>
-          <Button size="lg" className="h-12 flex-1 text-base" disabled={!cart.lines.length || !me.erp_ready} onClick={pay}>
-            Pay {cart.lines.length ? money(totals.total) : ""} <kbd className="ml-1 text-xs opacity-60">F9</kbd>
+          <Button size="lg" className="h-14 min-w-0 flex-1 text-base font-bold" disabled={!cart.lines.length || !me.erp_ready} onClick={pay}>
+            Pay {cart.lines.length ? <span className="truncate tabular-nums">{money(totals.total)}</span> : ""}
+            <kbd className="rounded-md bg-white/15 px-1.5 py-0.5 font-mono text-[10px]">F9</kbd>
           </Button>
         </div>
       </div>
@@ -676,7 +699,8 @@ export function Till({ storeId }: { storeId: number }) {
   return (
     <div className="flex min-h-0 flex-1">
       {/* ---------------------------------------------------------------- catalogue */}
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-3 md:p-4">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 md:px-6 md:pt-5">
+        <PageHeader title="Till" description={`${shiftLabel}`} shiftPill={false} />
         {!me.erp_ready && (
           <Alert variant="destructive">
             <AlertTitle>Selling is paused</AlertTitle>
@@ -687,7 +711,7 @@ export function Till({ storeId }: { storeId: number }) {
           </Alert>
         )}
         <div className="flex gap-2">
-          <InputGroup className="h-10">
+          <InputGroup className="h-12 rounded-xl">
             <InputGroupAddon>
               <ScanBarcode />
             </InputGroupAddon>
@@ -695,6 +719,7 @@ export function Till({ storeId }: { storeId: number }) {
               ref={searchRef}
               autoFocus
               placeholder="Scan a barcode or search name, SKU, brand (F2)"
+              className="text-[15px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={onSearchKey}
@@ -709,7 +734,7 @@ export function Till({ storeId }: { storeId: number }) {
           </InputGroup>
           <Button
             variant="outline"
-            className="h-10"
+            className="h-12 rounded-xl px-4"
             onClick={() => refreshStock.mutate()}
             disabled={refreshStock.isPending}
             title="Pull this store's stock and the promotions from the ERP"
@@ -717,16 +742,17 @@ export function Till({ storeId }: { storeId: number }) {
             {refreshStock.isPending ? <Spinner /> : <RefreshCw />}
             <span className="hidden sm:inline">Stock</span>
           </Button>
-          <Button variant="outline" className="h-10" onClick={() => setLowStock(true)} title="Products running out; ask the ERP for more">
-            <TriangleAlert className={lowCount ? "text-amber-600 dark:text-amber-400" : undefined} />
+          <Button
+            variant="outline"
+            className={cn("h-12 rounded-xl px-4", lowCount > 0 && "border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft/80 hover:text-warning")}
+            onClick={() => setLowStock(true)}
+            title="Products running out; ask the ERP for more"
+          >
+            <TriangleAlert />
             <span className="hidden xl:inline">Low stock</span>
-            {lowCount > 0 && (
-              <Badge variant="secondary" className="tabular-nums">
-                {lowCount}
-              </Badge>
-            )}
+            {lowCount > 0 && <span className="tabular-nums">{lowCount}</span>}
           </Button>
-          <Button variant="outline" className="h-10" onClick={() => setHolding(true)} title="Carts on hold (F7)">
+          <Button variant="outline" className="h-12 rounded-xl px-4" onClick={() => setHolding(true)} title="Carts on hold (F7)">
             <PauseCircle />
             {heldCount > 0 && (
               <Badge variant="secondary" className="tabular-nums">
@@ -734,20 +760,20 @@ export function Till({ storeId }: { storeId: number }) {
               </Badge>
             )}
           </Button>
-          <Button variant="outline" size="icon" className="hidden size-10 md:inline-flex" onClick={openDisplay} title="Open the customer display">
+          <Button variant="outline" size="icon" className="hidden size-12 rounded-xl 2xl:inline-flex" onClick={openDisplay} title="Open the customer display">
             <MonitorSmartphone />
           </Button>
-          <Button variant="outline" size="icon" className="hidden size-10 md:inline-flex" onClick={() => setHelp(true)} title="Keyboard shortcuts (F1)">
+          <Button variant="outline" size="icon" className="hidden size-12 rounded-xl 2xl:inline-flex" onClick={() => setHelp(true)} title="Keyboard shortcuts (F1)">
             <Keyboard />
           </Button>
         </div>
         <div className="flex items-start gap-2">
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-1">
-            <Button size="sm" variant={category === null ? "default" : "outline"} onClick={() => setCategory(null)}>
+            <Button className="h-9 rounded-full px-4" variant={category === null ? "default" : "outline"} onClick={() => setCategory(null)}>
               All
             </Button>
             {catalog.data?.categories.map((c) => (
-              <Button key={c} size="sm" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>
+              <Button key={c} className="h-9 rounded-full px-4" variant={category === c ? "default" : "outline"} onClick={() => setCategory(c)}>
                 {c}
               </Button>
             ))}
@@ -783,7 +809,7 @@ export function Till({ storeId }: { storeId: number }) {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
                 {Array.from({ length: 12 }, (_, i) => (
                   <Skeleton key={i} className="h-56" />
                 ))}
@@ -815,7 +841,7 @@ export function Till({ storeId }: { storeId: number }) {
                       onClick={() => add(p)}
                       className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 active:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <ProductImage category={p.category} size="md" />
+                      <ProductImage name={p.name} category={p.category} out={left <= 0} size="md" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{p.name}</span>
                         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -840,7 +866,7 @@ export function Till({ storeId }: { storeId: number }) {
               })}
             </ul>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
               {visible.map((p) => {
                 const left = p.available - inCart(p.id);
                 const taken = inCart(p.id);
@@ -851,28 +877,28 @@ export function Till({ storeId }: { storeId: number }) {
                     type="button"
                     disabled={left <= 0}
                     onClick={() => add(p)}
-                    className="group flex min-w-0 flex-col gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/40 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group flex min-w-0 flex-col gap-3 rounded-2xl border bg-card p-2.5 text-left transition-colors hover:border-primary/40 active:translate-y-px disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted-foreground"
                   >
                     {/* The picture carries the labels, one per corner so they never meet on a narrow tile:
                         in the cart top left, stock top right, promotion bottom left. */}
                     <span className="relative block">
-                      <ProductImage category={p.category} size="lg" className="h-24" />
+                      <ProductImage name={p.name} category={p.category} out={left <= 0} size="lg" className="h-[72px]" />
                       {taken > 0 && (
-                        <Badge className="absolute top-2 left-2 tabular-nums">{fmtQty(taken)} in cart</Badge>
+                        <Badge className="absolute top-2 left-2 h-5 rounded-full px-2 text-[11px] font-semibold tabular-nums">{fmtQty(taken)} in cart</Badge>
                       )}
                       <StockBadge left={left} lowAt={me.low_stock_at} className="absolute top-2 right-2" />
                       {sp.badge && (
                         <PromoBadge text={sp.badge} title={sp.promo} className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)]" />
                       )}
                     </span>
-                    <span className="flex min-h-10 flex-col">
-                      <span className="line-clamp-2 text-sm leading-5 font-medium">{p.name}</span>
+                    <span className="flex min-h-10 flex-col px-1">
+                      <span className="line-clamp-2 text-sm leading-5 font-semibold">{p.name}</span>
                     </span>
-                    <span className="mt-auto flex flex-col gap-0.5">
+                    <span className="mt-auto flex flex-col gap-0.5 px-1 pb-1">
                       <span className="font-mono text-[11px] text-muted-foreground">{p.sku}</span>
                       {/* New price first; the list price beside it, or under it when the tile is narrow. */}
                       <span className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                        <span className="font-semibold">{money(sp.price)}</span>
+                        <span className="text-[17px] font-bold">{money(sp.price)}</span>
                         {sp.price < p.price && <s className="text-xs text-muted-foreground">{money(p.price)}</s>}
                       </span>
                     </span>
@@ -886,8 +912,8 @@ export function Till({ storeId }: { storeId: number }) {
           Prices exclude PPN {me.company.tax_rate}%. Stock is the ERP&apos;s at the last sync, less sales not booked there yet.
           Press F1 for shortcuts.
         </p>
-        {/* The cart lives in a drawer: the products keep the whole width. */}
-        <div className="flex gap-2 border-t pt-3">
+        {/* Narrow screens: the cart lives in a drawer and this bar opens it. Wide ones show it beside. */}
+        <div className="flex gap-2 border-t pt-3 lg:hidden">
           <Button variant="outline" size="lg" className="h-12 min-w-0 flex-1 justify-between" onClick={() => setDrawer(true)}>
             <span className="flex items-center gap-2">
               <ShoppingCart />
@@ -910,12 +936,13 @@ export function Till({ storeId }: { storeId: number }) {
         </div>
       </section>
 
-      {/* ---------------------------------------------------------------- cart drawer */}
+      {/* ---------------------------------------------------------------- cart */}
+      <aside aria-label="Cart" className="hidden min-h-0 w-[22rem] shrink-0 flex-col border-l bg-card lg:flex xl:w-[24rem]">
+        {cartPanel}
+      </aside>
       <Sheet open={drawer} onOpenChange={setDrawer}>
-        <SheetContent side="right" className="gap-0 bg-background p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
-          <SheetHeader className="border-b bg-background">
-            <SheetTitle>Cart · {fmtQty(itemCount)} item(s)</SheetTitle>
-          </SheetHeader>
+        <SheetContent side="right" className="gap-0 bg-card p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
+          <SheetTitle className="sr-only">Cart</SheetTitle>
           {cartPanel}
         </SheetContent>
       </Sheet>
@@ -928,6 +955,9 @@ export function Till({ storeId }: { storeId: number }) {
         busy={checkout.isPending}
         wallet={wallet}
         defaultMethod={me.preferences.default_payment}
+        totals={totals}
+        customerName={cart.customer ? cart.customer.name : "Walk-in customer"}
+        context={shiftLabel}
         onPay={(rows) => checkout.mutate(rows)}
       />
       <HeldCartsSheet open={holding} onOpenChange={setHolding} onResume={resume} cartBusy={cart.lines.length > 0} />

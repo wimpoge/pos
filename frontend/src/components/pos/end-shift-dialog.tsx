@@ -8,7 +8,7 @@ import { Totals } from "@/components/pos/common";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, get, post } from "@/lib/api";
@@ -90,7 +90,7 @@ function CountForm({ shift, onEnded }: { shift: ShiftDetail; onEnded: (s: ShiftD
         </DialogDescription>
       </DialogHeader>
       {!countingLater && (
-        <Totals full
+        <Totals boxed
           rows={[
             { label: "Sales", value: `${shift.summary.sales_count} · ${money(shift.summary.sales_total)}` },
             { label: "Opening float", value: money(shift.opening_float) },
@@ -103,16 +103,20 @@ function CountForm({ shift, onEnded }: { shift: ShiftDetail; onEnded: (s: ShiftD
       <form onSubmit={submit}>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="counted">Counted cash (Rp)</FieldLabel>
-            <Input
-              id="counted"
-              inputMode="numeric"
-              autoFocus
-              required
-              className="h-11 text-lg tabular-nums"
-              value={showAmount(counted)}
-              onChange={(e) => setCounted(e.target.value)}
-            />
+            <FieldLabel htmlFor="counted">Counted cash</FieldLabel>
+            <InputGroup className="h-14 rounded-xl">
+              <InputGroupAddon className="pl-4 text-base font-semibold">Rp</InputGroupAddon>
+              <InputGroupInput
+                id="counted"
+                inputMode="numeric"
+                autoFocus
+                required
+                placeholder="0"
+                className="text-2xl font-bold tabular-nums"
+                value={showAmount(counted)}
+                onChange={(e) => setCounted(e.target.value)}
+              />
+            </InputGroup>
             <FieldDescription className={cn(diff !== null && diff < 0 && "text-destructive", diff !== null && diff > 0 && "text-amber-700 dark:text-amber-400")}>
               {diff === null
                 ? `The drawer should hold ${money(expected)}.`
@@ -127,7 +131,7 @@ function CountForm({ shift, onEnded }: { shift: ShiftDetail; onEnded: (s: ShiftD
               <Textarea id="note" required maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
             </Field>
           )}
-          <Button type="submit" size="lg" disabled={close.isPending || counted === ""}>
+          <Button type="submit" size="lg" className="h-13 rounded-xl text-base font-bold" disabled={close.isPending || counted === ""}>
             {close.isPending && <Spinner />} {countingLater ? "Save count" : "End shift"}
           </Button>
         </FieldGroup>
@@ -161,7 +165,7 @@ function Ended({ shift, onDone }: { shift: ShiftDetail; onDone: () => void }) {
             : `The drawer was ${money(Math.abs(shift.variance ?? 0))} ${(shift.variance ?? 0) > 0 ? "over" : "short"}.`}
         </DialogDescription>
       </DialogHeader>
-      <Totals full
+      <Totals boxed
         rows={[
           { label: "Sales", value: `${shift.summary.sales_count} · ${money(shift.summary.sales_total)}` },
           { label: "Card + QRIS", value: money(shift.summary.by_method.card + shift.summary.by_method.qris) },

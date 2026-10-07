@@ -75,13 +75,14 @@ function AccountCard({ profile }: { profile: Profile | undefined }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-4">
-        <Avatar className="size-14 rounded-xl">
-          <AvatarFallback className="rounded-xl text-lg">{initials}</AvatarFallback>
+        <Avatar className="size-14">
+          <AvatarFallback className="bg-ink text-lg font-bold text-ink-foreground">{initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <CardTitle className="truncate text-lg">{me.full_name}</CardTitle>
-          <CardDescription>
-            <span className="font-mono">{me.username}</span> · {a?.role ?? "Cashier"}
+          <CardTitle className="truncate text-xl">{me.full_name}</CardTitle>
+          <CardDescription className="mt-0.5 flex items-center gap-2">
+            <span className="font-mono">{me.username}</span>
+            <span className="rounded-full bg-info-soft px-2 py-0.5 text-[11px] font-semibold text-info">{a?.role ?? "Cashier"}</span>
           </CardDescription>
         </div>
       </CardHeader>
@@ -95,21 +96,21 @@ function AccountCard({ profile }: { profile: Profile | undefined }) {
               { label: "In the ERP since", value: a?.created_at ? dateLabel(a.created_at) : "—" },
               { label: "Logged in", value: me.last_login_at ? relative(me.last_login_at) : "—" },
               { label: "Discount limit", value: `${me.max_discount_pct}%` },
-              { label: "Till PIN", value: profile.has_pin ? "Set" : "Not set" },
+              { label: "Till PIN", value: profile.has_pin ? "Set" : "Not set", warn: !profile.has_pin },
             ].map((i) => (
-              <div key={i.label} className={cn("min-w-0 space-y-0.5", i.wide && "col-span-2")}>
+              <div key={i.label} className={cn("min-w-0 space-y-0.5", "wide" in i && i.wide && "col-span-2")}>
                 <dt className="text-xs text-muted-foreground">{i.label}</dt>
-                <dd className="truncate font-medium">{i.value}</dd>
+                <dd className={cn("truncate font-semibold", "warn" in i && i.warn && "text-warning")}>{i.value}</dd>
               </div>
             ))}
           </dl>
         )}
         {profile && !profile.erp_reachable && (
-          <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+          <p className="flex items-center gap-1.5 text-xs text-warning">
             <CloudOff className="size-3.5" /> The ERP can&apos;t be reached; showing what this till knows.
           </p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="rounded-xl bg-subtle px-3.5 py-3 text-xs leading-relaxed text-muted-foreground">
           Your account lives in the ERP{me.company.name ? ` of ${me.company.name}` : ""}. Ask an ERP administrator to
           change your name or email; your password and PIN you change here.
         </p>
@@ -131,17 +132,28 @@ function Appearance() {
         <CardTitle>Appearance</CardTitle>
         <CardDescription>For this browser.</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2">
-        {options.map((o) => (
-          <Button
-            key={o.value}
-            variant={(theme ?? "system") === o.value ? "default" : "outline"}
-            className="h-14 flex-col gap-1"
-            onClick={() => setTheme(o.value)}
-          >
-            <o.icon /> {o.label}
-          </Button>
-        ))}
+      <CardContent>
+        {/* A segmented switch, like the profile's tabs. */}
+        <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+          {options.map((o) => {
+            const on = (theme ?? "system") === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setTheme(o.value)}
+                className={cn(
+                  "flex h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold text-foreground/65 transition-colors hover:text-foreground [&_svg]:size-4",
+                  on && "bg-card text-foreground shadow-sm",
+                )}
+              >
+                <o.icon /> {o.label}
+              </button>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -164,10 +176,10 @@ function LogOutButtons() {
   }
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Button variant="outline" onClick={lock}>
+      <Button variant="outline" size="lg" onClick={lock}>
         <KeyRound /> Lock till
       </Button>
-      <Button variant="outline" onClick={logout} disabled={busy}>
+      <Button variant="outline" size="lg" className="border-danger/30 text-danger hover:bg-danger-soft hover:text-danger" onClick={logout} disabled={busy}>
         {busy ? <Spinner /> : <LogOut />} Log out
       </Button>
     </div>
@@ -369,21 +381,25 @@ function PreferencesCard({ prefs }: { prefs: Preferences }) {
     save.mutate(changes);
   };
   const toggle = (key: "auto_print" | "scan_sound", label: string, hint: string) => (
-    <Field orientation="horizontal" className="items-start">
+    // The whole tile is the label, so a tap anywhere on it ticks the box.
+    <label
+      htmlFor={`pref-${key}`}
+      className="flex cursor-pointer items-start gap-3.5 rounded-xl border px-4 py-3.5 transition-colors hover:bg-subtle has-checked:border-primary/40"
+    >
       <input
         id={`pref-${key}`}
         type="checkbox"
-        className="mt-0.5 size-4 accent-primary"
+        className="mt-0.5 size-5 shrink-0 accent-primary"
         checked={form[key]}
         onChange={(e) => set({ [key]: e.target.checked })}
       />
-      <div>
-        <FieldLabel htmlFor={`pref-${key}`}>{label}</FieldLabel>
-        <FieldDescription>{hint}</FieldDescription>
-      </div>
-    </Field>
+      <span>
+        <span className="block font-semibold">{label}</span>
+        <span className="block text-sm text-muted-foreground">{hint}</span>
+      </span>
+    </label>
   );
-  const selectClass = "h-9 w-full rounded-lg border bg-transparent px-2 text-sm dark:bg-input/30 sm:w-72";
+  const selectClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-[15px] dark:bg-input/30";
   return (
     <Card>
       <CardHeader>
@@ -394,36 +410,38 @@ function PreferencesCard({ prefs }: { prefs: Preferences }) {
         <FieldGroup>
           {toggle("auto_print", "Print the receipt after every sale", "The receipt printer opens as soon as a sale is paid.")}
           {toggle("scan_sound", "Beep when an item goes into the cart", "Handy with a barcode scanner: you hear every scan.")}
-          <Field>
-            <FieldLabel htmlFor="pref-pay">The payment window starts on</FieldLabel>
-            <select
-              id="pref-pay"
-              className={selectClass}
-              value={form.default_payment}
-              onChange={(e) => set({ default_payment: e.target.value as Preferences["default_payment"] })}
-            >
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="qris">QRIS</option>
-            </select>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="pref-lock">Lock the till by itself</FieldLabel>
-            <select
-              id="pref-lock"
-              className={selectClass}
-              value={form.auto_lock_minutes}
-              onChange={(e) => set({ auto_lock_minutes: Number(e.target.value) })}
-            >
-              <option value={0}>Never</option>
-              {[1, 2, 5, 10, 15, 30].map((m) => (
-                <option key={m} value={m}>
-                  After {m} minute{m > 1 ? "s" : ""} without a touch
-                </option>
-              ))}
-            </select>
-            <FieldDescription>Unlock with your PIN (see Security) or your password.</FieldDescription>
-          </Field>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="pref-pay">The payment window starts on</FieldLabel>
+              <select
+                id="pref-pay"
+                className={selectClass}
+                value={form.default_payment}
+                onChange={(e) => set({ default_payment: e.target.value as Preferences["default_payment"] })}
+              >
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="qris">QRIS</option>
+              </select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="pref-lock">Lock the till by itself</FieldLabel>
+              <select
+                id="pref-lock"
+                className={selectClass}
+                value={form.auto_lock_minutes}
+                onChange={(e) => set({ auto_lock_minutes: Number(e.target.value) })}
+              >
+                <option value={0}>Never</option>
+                {[1, 2, 5, 10, 15, 30].map((m) => (
+                  <option key={m} value={m}>
+                    After {m} minute{m > 1 ? "s" : ""} without a touch
+                  </option>
+                ))}
+              </select>
+              <FieldDescription>Unlock with your PIN (see Security) or your password.</FieldDescription>
+            </Field>
+          </div>
         </FieldGroup>
       </CardContent>
     </Card>
@@ -508,7 +526,12 @@ function PinCard({ hasPin }: { hasPin: boolean }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Till PIN {hasPin ? <Badge variant="secondary">Set</Badge> : <Badge variant="outline">Not set</Badge>}
+          Till PIN{" "}
+          {hasPin ? (
+            <Badge className="rounded-full border-transparent bg-success-soft text-success">Set</Badge>
+          ) : (
+            <Badge className="rounded-full border-transparent bg-warning-soft text-warning">Not set</Badge>
+          )}
         </CardTitle>
         <CardDescription>4 to 6 digits for unlocking a locked till quickly. Your password always works too.</CardDescription>
       </CardHeader>
@@ -611,7 +634,7 @@ function DevicesCard({ sessions }: { sessions: DeviceSession[] }) {
                 <Icon className="size-5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    {d.label} {s.current && <Badge variant="secondary">This device</Badge>}
+                    {d.label} {s.current && <Badge className="rounded-full border-transparent bg-success-soft text-success">This device</Badge>}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Active {relative(s.last_seen_at)} · logged in {relative(s.created_at)}

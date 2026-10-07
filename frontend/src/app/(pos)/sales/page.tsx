@@ -75,9 +75,9 @@ export default function SalesPage() {
         <StatCard
           label="ERP"
           icon={<CloudUpload />}
-          value={s ? (s.erp.pending + s.erp.failed === 0 ? "All booked" : `${s.erp.pending + s.erp.failed} open`) : "—"}
-          tone={s?.erp.failed ? "danger" : s?.erp.pending ? undefined : "success"}
-          hint={s && (s.erp.failed ? `${s.erp.failed} refused, retried every 10 min` : s.erp.pending ? `${s.erp.pending} waiting, retrying` : "Every sale is in the ERP")}
+          value={s ? (s.erp.pending + s.erp.failed === 0 ? "All booked" : `${s.erp.pending + s.erp.failed} need attention`) : "—"}
+          tone={s ? (s.erp.pending + s.erp.failed ? "warning" : "success") : undefined}
+          hint={s && (s.erp.pending + s.erp.failed ? `${s.erp.pending} waiting · ${s.erp.failed} refused` : "Every sale is in the ERP")}
         />
       </div>
 
